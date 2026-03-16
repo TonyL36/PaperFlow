@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      default-filters:
+        - AddResponseHeader=X-Api-Gateway, paperflow
+      routes:
+        - id: user-auth
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+        - id: user-users
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/users/**
+        - id: content-posts
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/posts,/api/v1/posts/**
+        - id: content-comments
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/comments,/api/v1/comments/**
+        - id: agents-out-of-scope
+          uri: ${AGENT_SERVICE_URL:http://localhost:8090}
+          predicates:
+            - Path=/api/v1/agents/**
+          filters:
+            - RewritePath=/api/v1/agents/(?<segment>.*), /$\{segment}
+
+paperflow:
+  auth:
+    jwtSecret: ${PF_JWT_SECRET:change-me-in-dev-change-me-in-dev-change-me}
+    accessTokenTtlSeconds: ${PF_ACCESS_TTL:900}
+  rate-limit:
+    anonymousPerMinute: ${PF_RL_ANON_PER_MIN:10}
+    userPerMinute: ${PF_RL_USER_PER_MIN:120}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
