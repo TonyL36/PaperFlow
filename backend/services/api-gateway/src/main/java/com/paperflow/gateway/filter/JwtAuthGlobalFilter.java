@@ -35,16 +35,30 @@ public final class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
     String path = exchange.getRequest().getURI().getPath();
     HttpMethod method = exchange.getRequest().getMethod();
 
-    boolean isAuth = path.startsWith("/api/v1/auth/");
+    boolean isAuthPublic =
+        path.equals("/api/v1/auth/register") ||
+        path.equals("/api/v1/auth/register/email-code/request") ||
+        path.equals("/api/v1/auth/login") ||
+        path.equals("/api/v1/auth/refresh") ||
+        path.equals("/api/v1/auth/password/request") ||
+        path.equals("/api/v1/auth/password/confirm");
+    boolean isOauthCallback =
+        path.equals("/api/v1/oauth/qq/callback") ||
+        path.equals("/api/v1/oauth/wechat/callback");
     boolean isPublic = method == HttpMethod.GET && (
         path.equals("/api/v1/posts") || path.startsWith("/api/v1/posts/") ||
         path.equals("/api/v1/comments") || path.startsWith("/api/v1/comments/")
     );
-    if (isAuth || isPublic) {
+    String auth = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+    boolean hasBearer = auth != null && !auth.isBlank() && auth.startsWith("Bearer ");
+
+    if (isAuthPublic || isOauthCallback) {
+      return chain.filter(exchange);
+    }
+    if (isPublic && !hasBearer) {
       return chain.filter(exchange);
     }
 
-    String auth = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
     if (auth == null || auth.isBlank() || !auth.startsWith("Bearer ")) {
       return writer.writeError(exchange, HttpStatus.UNAUTHORIZED, "AUTH_MISSING_TOKEN", "Missing Authorization Bearer token", Map.of());
     }

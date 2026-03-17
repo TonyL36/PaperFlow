@@ -35,4 +35,4 @@ yarn-error.log*
 # Env files (keep docker/env/*.env in repo; ignore local overrides)
 .env
 .env.*
-
+scripts/env/local.env.bat

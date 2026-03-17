@@ -39,7 +39,19 @@ public class UsersController {
     if (u == null) {
       return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "User not found", java.util.Map.of()));
     }
-    UserProfileResponse profile = new UserProfileResponse(u.getId(), u.getEmail(), u.getDisplayName(), List.of(u.getRoles().split(",")));
+    UserProfileResponse profile = new UserProfileResponse(
+        u.getId(),
+        u.getEmail(),
+        u.getDisplayName(),
+        List.of(u.getRoles().split(",")),
+        u.getStatus(),
+        u.getAvatarUrl(),
+        u.getBio(),
+        u.getPhone(),
+        u.getEmailVerifiedAt() != null,
+        u.getPhoneVerifiedAt() != null,
+        u.getQqOpenId() != null && !u.getQqOpenId().isBlank()
+    );
     return ResponseEntity.ok(Envelope.ok(
         safeRequestId(requestId),
         profile,
@@ -62,10 +74,24 @@ public class UsersController {
       return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "User not found", java.util.Map.of()));
     }
     u.setDisplayName(req.displayName());
+    u.setAvatarUrl(req.avatarUrl() == null || req.avatarUrl().isBlank() ? null : req.avatarUrl().trim());
+    u.setBio(req.bio() == null || req.bio().isBlank() ? null : req.bio().trim());
     u.setUpdatedAt(OffsetDateTime.now());
     users.save(u);
 
-    UserProfileResponse profile = new UserProfileResponse(u.getId(), u.getEmail(), u.getDisplayName(), List.of(u.getRoles().split(",")));
+    UserProfileResponse profile = new UserProfileResponse(
+        u.getId(),
+        u.getEmail(),
+        u.getDisplayName(),
+        List.of(u.getRoles().split(",")),
+        u.getStatus(),
+        u.getAvatarUrl(),
+        u.getBio(),
+        u.getPhone(),
+        u.getEmailVerifiedAt() != null,
+        u.getPhoneVerifiedAt() != null,
+        u.getQqOpenId() != null && !u.getQqOpenId().isBlank()
+    );
     return ResponseEntity.ok(Envelope.ok(
         safeRequestId(requestId),
         profile,
@@ -77,4 +103,3 @@ public class UsersController {
     return requestId == null ? "" : requestId;
   }
 }
-

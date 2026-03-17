@@ -18,6 +18,7 @@
 
 - 05 注册/登录/刷新/注销： [05-user-auth.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/05-user-auth.md)
 - 06 获取/更新个人资料： [06-user-profile.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/06-user-profile.md)
+- 17 资料、绑定与 OAuth（Email/Phone/QQ）： [17-user-bindings-and-oauth.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/17-user-bindings-and-oauth.md)
 
 ## 3. 内容服务（content-service）
 
@@ -27,11 +28,13 @@
 - 10 评论管理（审核/驳回）： [10-content-admin-moderation.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/10-content-admin-moderation.md)
 - 14 演示接收接口（Agent 推送 → 落库）： [14-content-agent-ingest.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/14-content-agent-ingest.md)
 - 15 演示 Seed + 每日内容升级： [15-content-demo-seed-posts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/15-content-demo-seed-posts.md)
+- 18 收藏与足迹： [18-content-favorites-footprints.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/18-content-favorites-footprints.md)
 
 ## 4. 文档生成与部署
 
 - 11 Controller 扫描生成文档插件： [11-apidoc-plugin.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/11-apidoc-plugin.md)
 - 12 一键部署（dev/test/prod）： [12-deploy.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/12-deploy.md)
+- 19 本地启动与可配置项脚本： [19-local-dev-scripts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/19-local-dev-scripts.md)
 
 ## 5. 前端（paperflow-web）
 

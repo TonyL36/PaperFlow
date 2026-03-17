@@ -1,0 +1,7 @@
+@echo off
+set PF_MAIL_ENABLED=true
+set PF_MAIL_HOST=smtp.qq.com
+set PF_MAIL_PORT=465
+set PF_MAIL_USERNAME=
+set PF_MAIL_PASSWORD=
+set PF_MAIL_FROM=

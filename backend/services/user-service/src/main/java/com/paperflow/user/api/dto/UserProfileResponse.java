@@ -6,7 +6,13 @@ public record UserProfileResponse(
     String userId,
     String email,
     String displayName,
-    List<String> roles
+    List<String> roles,
+    String status,
+    String avatarUrl,
+    String bio,
+    String phone,
+    boolean emailVerified,
+    boolean phoneVerified,
+    boolean qqBound
 ) {
 }
-

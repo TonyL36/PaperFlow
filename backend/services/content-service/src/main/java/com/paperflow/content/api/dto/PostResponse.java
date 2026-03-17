@@ -7,7 +7,8 @@ public record PostResponse(
     String title,
     String content,
     String source,
-    OffsetDateTime publishedAt
+    OffsetDateTime publishedAt,
+    Boolean favorited,
+    OffsetDateTime lastViewedAt
 ) {
 }
-

@@ -1,19 +1,24 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { PostsPage } from "./pages/PostsPage";
 import { PostDetailPage } from "./pages/PostDetailPage";
 import { VisualizationPage } from "./pages/VisualizationPage";
 import { AdminCommentsPage } from "./pages/AdminCommentsPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { FavoritesPage } from "./pages/FavoritesPage";
+import { FootprintsPage } from "./pages/FootprintsPage";
 import { useAuth } from "./auth/AuthContext";
 import { TopNav } from "./layout/TopNav";
 import { NotFoundPage } from "./layout/NotFoundPage";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 
 export function App() {
+  const loc = useLocation();
+  const isLogin = loc.pathname === "/login";
   return (
     <div className="pf-app">
-      <TopNav />
-      <div className="pf-container">
+      {isLogin ? null : <TopNav />}
+      <div className={isLogin ? undefined : "pf-container"}>
         <AppErrorBoundary>
           <Routes>
             <Route path="/" element={<Navigate to="/posts" replace />} />
@@ -22,11 +27,35 @@ export function App() {
             <Route path="/posts/:postId" element={<PostDetailPage />} />
             <Route path="/viz" element={<VisualizationPage />} />
             <Route
-              path="/admin/comments"
+              path="/favorites"
               element={
                 <RequireAuth>
-                  <AdminCommentsPage />
+                  <FavoritesPage />
                 </RequireAuth>
+              }
+            />
+            <Route
+              path="/footprints"
+              element={
+                <RequireAuth>
+                  <FootprintsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/comments"
+              element={
+                <RequireAdmin>
+                  <AdminCommentsPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <RequireAdmin>
+                  <AdminUsersPage />
+                </RequireAdmin>
               }
             />
             <Route path="*" element={<NotFoundPage />} />
@@ -41,6 +70,17 @@ function RequireAuth(props: { children: React.ReactNode }) {
   const auth = useAuth();
   if (auth.state.status !== "authenticated") {
     return <Navigate to="/login" replace />;
+  }
+  return <>{props.children}</>;
+}
+
+function RequireAdmin(props: { children: React.ReactNode }) {
+  const auth = useAuth();
+  if (auth.state.status !== "authenticated") {
+    return <Navigate to="/login" replace />;
+  }
+  if (!auth.state.roles.includes("ADMIN")) {
+    return <Navigate to="/posts" replace />;
   }
   return <>{props.children}</>;
 }

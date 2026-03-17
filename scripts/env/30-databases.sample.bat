@@ -1,0 +1,9 @@
+@echo off
+set USER_DB_URL=
+set USER_DB_USER=
+set USER_DB_PASS=
+
+set CONTENT_DB_URL=
+set CONTENT_DB_USER=
+set CONTENT_DB_PASS=
+

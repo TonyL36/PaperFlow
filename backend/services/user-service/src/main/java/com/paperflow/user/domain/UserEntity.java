@@ -25,6 +25,42 @@ public class UserEntity {
   @Column(name = "roles", nullable = false)
   private String roles;
 
+  @Column(name = "status", nullable = false)
+  private String status;
+
+  @Column(name = "avatar_url")
+  private String avatarUrl;
+
+  @Column(name = "bio")
+  private String bio;
+
+  @Column(name = "phone")
+  private String phone;
+
+  @Column(name = "email_verified_at")
+  private OffsetDateTime emailVerifiedAt;
+
+  @Column(name = "phone_verified_at")
+  private OffsetDateTime phoneVerifiedAt;
+
+  @Column(name = "qq_open_id")
+  private String qqOpenId;
+
+  @Column(name = "qq_nickname")
+  private String qqNickname;
+
+  @Column(name = "qq_bound_at")
+  private OffsetDateTime qqBoundAt;
+
+  @Column(name = "wechat_open_id")
+  private String wechatOpenId;
+
+  @Column(name = "wechat_nickname")
+  private String wechatNickname;
+
+  @Column(name = "wechat_bound_at")
+  private OffsetDateTime wechatBoundAt;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -71,6 +107,102 @@ public class UserEntity {
     this.roles = roles;
   }
 
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(String status) {
+    this.status = status;
+  }
+
+  public String getAvatarUrl() {
+    return avatarUrl;
+  }
+
+  public void setAvatarUrl(String avatarUrl) {
+    this.avatarUrl = avatarUrl;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public void setBio(String bio) {
+    this.bio = bio;
+  }
+
+  public String getPhone() {
+    return phone;
+  }
+
+  public void setPhone(String phone) {
+    this.phone = phone;
+  }
+
+  public OffsetDateTime getEmailVerifiedAt() {
+    return emailVerifiedAt;
+  }
+
+  public void setEmailVerifiedAt(OffsetDateTime emailVerifiedAt) {
+    this.emailVerifiedAt = emailVerifiedAt;
+  }
+
+  public OffsetDateTime getPhoneVerifiedAt() {
+    return phoneVerifiedAt;
+  }
+
+  public void setPhoneVerifiedAt(OffsetDateTime phoneVerifiedAt) {
+    this.phoneVerifiedAt = phoneVerifiedAt;
+  }
+
+  public String getQqOpenId() {
+    return qqOpenId;
+  }
+
+  public void setQqOpenId(String qqOpenId) {
+    this.qqOpenId = qqOpenId;
+  }
+
+  public String getQqNickname() {
+    return qqNickname;
+  }
+
+  public void setQqNickname(String qqNickname) {
+    this.qqNickname = qqNickname;
+  }
+
+  public OffsetDateTime getQqBoundAt() {
+    return qqBoundAt;
+  }
+
+  public void setQqBoundAt(OffsetDateTime qqBoundAt) {
+    this.qqBoundAt = qqBoundAt;
+  }
+
+  public String getWechatOpenId() {
+    return wechatOpenId;
+  }
+
+  public void setWechatOpenId(String wechatOpenId) {
+    this.wechatOpenId = wechatOpenId;
+  }
+
+  public String getWechatNickname() {
+    return wechatNickname;
+  }
+
+  public void setWechatNickname(String wechatNickname) {
+    this.wechatNickname = wechatNickname;
+  }
+
+  public OffsetDateTime getWechatBoundAt() {
+    return wechatBoundAt;
+  }
+
+  public void setWechatBoundAt(OffsetDateTime wechatBoundAt) {
+    this.wechatBoundAt = wechatBoundAt;
+  }
+
   public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
@@ -87,4 +219,3 @@ public class UserEntity {
     this.updatedAt = updatedAt;
   }
 }
-

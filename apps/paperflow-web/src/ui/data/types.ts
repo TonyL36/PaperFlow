@@ -17,6 +17,8 @@ export type Post = {
   content: string;
   source: string;
   publishedAt: string;
+  favorited?: boolean | null;
+  lastViewedAt?: string | null;
 };
 
 export type Comment = {
@@ -33,3 +35,12 @@ export type Paged<T> = {
   page: { number: number; size: number; totalItems?: number; totalPages?: number };
 };
 
+export type AdminUser = {
+  userId: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  status: "ACTIVE" | "DISABLED" | string;
+  createdAt: string;
+  updatedAt: string;
+};

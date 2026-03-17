@@ -1,28 +1,28 @@
 :root{
-:  --pf-bg: #f7f6f3;
-:  --pf-surface: #ffffff;
-:  --pf-surface-2: #fbfbfa;
-:  --pf-text: #37352f;
-:  --pf-text-2: rgba(55, 53, 47, 0.72);
-:  --pf-text-3: rgba(55, 53, 47, 0.55);
-:  --pf-border: rgba(55, 53, 47, 0.14);
-:  --pf-border-strong: rgba(55, 53, 47, 0.2);
-:  --pf-shadow: 0 1px 2px rgba(15, 15, 15, 0.06), 0 8px 28px rgba(15, 15, 15, 0.08);
-:  --pf-radius: 10px;
-:  --pf-radius-sm: 8px;
-:  --pf-font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-:  --pf-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-:  --pf-focus: 0 0 0 3px rgba(35, 131, 226, 0.28);
-:  --pf-accent: #0b6e99;
-:  --pf-accent-2: rgba(11, 110, 153, 0.12);
-:  --pf-danger: #b42318;
-:  --pf-danger-bg: rgba(180, 35, 24, 0.08);
-:  --pf-warning: #b54708;
-:  --pf-warning-bg: rgba(181, 71, 8, 0.1);
-:  --pf-success: #067647;
-:  --pf-success-bg: rgba(6, 118, 71, 0.1);
-:  --pf-page-max: 1120px;
-:}
+  --pf-bg: #f7f6f3;
+  --pf-surface: #ffffff;
+  --pf-surface-2: #fbfbfa;
+  --pf-text: #37352f;
+  --pf-text-2: rgba(55, 53, 47, 0.72);
+  --pf-text-3: rgba(55, 53, 47, 0.55);
+  --pf-border: rgba(55, 53, 47, 0.14);
+  --pf-border-strong: rgba(55, 53, 47, 0.2);
+  --pf-shadow: 0 1px 2px rgba(15, 15, 15, 0.06), 0 8px 28px rgba(15, 15, 15, 0.08);
+  --pf-radius: 10px;
+  --pf-radius-sm: 8px;
+  --pf-font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --pf-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --pf-focus: 0 0 0 3px rgba(35, 131, 226, 0.28);
+  --pf-accent: #0b6e99;
+  --pf-accent-2: rgba(11, 110, 153, 0.12);
+  --pf-danger: #b42318;
+  --pf-danger-bg: rgba(180, 35, 24, 0.08);
+  --pf-warning: #b54708;
+  --pf-warning-bg: rgba(181, 71, 8, 0.1);
+  --pf-success: #067647;
+  --pf-success-bg: rgba(6, 118, 71, 0.1);
+  --pf-page-max: 1120px;
+}
 *{ box-sizing: border-box; }
 html, body{ height: 100%; }
 body{
@@ -163,7 +163,7 @@ button:disabled{
 .pf-hero{
   border-radius: var(--pf-radius);
   border: 1px solid var(--pf-border);
-  background: linear-gradient(180deg, rgba(35, 131, 226, 0.08), rgba(255,255,255,0));
+  background: var(--pf-surface);
   padding: 16px;
 }
 .pf-hero__title{
@@ -188,8 +188,27 @@ button:disabled{
 .pf-article__cover{
   height: 140px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255, 221, 87, 0.24), rgba(35, 131, 226, 0.18));
+  background: linear-gradient(135deg, rgba(255, 221, 87, 0.18), rgba(55, 53, 47, 0.08));
   border: 1px solid rgba(55, 53, 47, 0.10);
+}
+
+@media (max-width: 720px){
+  .pf-topnav__inner{
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .pf-container{
+    padding: 14px 12px 22px;
+  }
+  .pf-article{
+    padding: 14px;
+  }
+  .pf-article__title{
+    font-size: 22px;
+  }
+  .pf-postitem{
+    padding: 12px;
+  }
 }
 .pf-article__icon{
   width: 44px;

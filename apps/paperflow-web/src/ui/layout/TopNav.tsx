@@ -4,6 +4,7 @@ import { Button } from "../components/Button";
 
 export function TopNav() {
   const auth = useAuth();
+  const isAdmin = auth.state.status === "authenticated" ? auth.state.roles.includes("ADMIN") : false;
   return (
     <div className="pf-topnav">
       <div className="pf-topnav__inner">
@@ -16,12 +17,38 @@ export function TopNav() {
         <NavLink to="/viz" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
           🧭 Viz
         </NavLink>
-        <NavLink
-          to="/admin/comments"
-          className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
-        >
-          🛡️ Moderation
-        </NavLink>
+        {auth.state.status === "authenticated" ? (
+          <>
+            <NavLink
+              to="/favorites"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              Favorites
+            </NavLink>
+            <NavLink
+              to="/footprints"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              Footprints
+            </NavLink>
+          </>
+        ) : null}
+        {isAdmin ? (
+          <>
+            <NavLink
+              to="/admin/users"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              🧑‍⚖️ Users
+            </NavLink>
+            <NavLink
+              to="/admin/comments"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              🛡️ Moderation
+            </NavLink>
+          </>
+        ) : null}
         <div className="pf-navspacer" />
         {auth.state.status === "authenticated" ? (
           <div className="pf-row">

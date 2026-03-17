@@ -1,9 +1,10 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { apiLogin, apiLogout } from "../data/api";
+import { decodeJwtPayload } from "../utils/jwt";
 
 type AuthState =
   | { status: "anonymous" }
-  | { status: "authenticated"; accessToken: string };
+  | { status: "authenticated"; accessToken: string; userId: string; roles: string[] };
 
 type AuthContextValue = {
   state: AuthState;
@@ -19,15 +20,22 @@ export function AuthProvider(props: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
     const t = localStorage.getItem(STORAGE_KEY);
     if (t && t.trim()) {
-      return { status: "authenticated", accessToken: t };
+      const payload = decodeJwtPayload(t);
+      if (payload?.sub) {
+        return { status: "authenticated", accessToken: t, userId: payload.sub, roles: payload.roles ?? [] };
+      }
     }
     return { status: "anonymous" };
   });
 
   const login = useCallback(async (email: string, password: string) => {
     const accessToken = await apiLogin({ email, password });
+    const payload = decodeJwtPayload(accessToken);
+    if (!payload?.sub) {
+      throw new Error("invalid_access_token");
+    }
     localStorage.setItem(STORAGE_KEY, accessToken);
-    setState({ status: "authenticated", accessToken });
+    setState({ status: "authenticated", accessToken, userId: payload.sub, roles: payload.roles ?? [] });
   }, []);
 
   const logout = useCallback(async () => {
@@ -52,4 +60,3 @@ export function useAuth() {
   }
   return v;
 }
-

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { apiCreateComment, apiGetPost, apiListComments } from "../data/api";
+import { apiCreateComment, apiFavoritePost, apiGetPost, apiListComments, apiUnfavoritePost } from "../data/api";
 import type { Comment, Post } from "../data/types";
 import { useAuth } from "../auth/AuthContext";
 import { Alert } from "../components/Alert";
@@ -46,6 +46,8 @@ export function PostDetailPage() {
 
   const post = state.data?.post ?? null;
   const comments = state.data?.comments ?? [];
+  const canFavorite = auth.state.status === "authenticated" && !!post;
+  const favorited = post?.favorited === true;
 
   return (
     <Page
@@ -71,7 +73,39 @@ export function PostDetailPage() {
               <span>{formatDateTime(post.publishedAt)}</span>
               <span className="pf-meta__dot" />
               <span>{readingTimeMinutes(post.content)} min read</span>
+              {post.lastViewedAt ? (
+                <>
+                  <span className="pf-meta__dot" />
+                  <span className="pf-muted2">last viewed {formatDateTime(post.lastViewedAt)}</span>
+                </>
+              ) : null}
             </div>
+            {auth.state.status === "authenticated" ? (
+              <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+                <Button
+                  onClick={async () => {
+                    if (auth.state.status !== "authenticated" || !post) return;
+                    try {
+                      if (favorited) {
+                        await apiUnfavoritePost(auth.state.accessToken, post.postId);
+                      } else {
+                        await apiFavoritePost(auth.state.accessToken, post.postId);
+                      }
+                      reload();
+                    } catch (e) {
+                      setSubmitError(e);
+                    }
+                  }}
+                  disabled={!canFavorite}
+                >
+                  {favorited ? "取消收藏" : "收藏"}
+                </Button>
+              </div>
+            ) : (
+              <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+                <span className="pf-muted2">登录后可收藏与记录足迹</span>
+              </div>
+            )}
             <RichText text={post.content} />
           </div>
         </Card>

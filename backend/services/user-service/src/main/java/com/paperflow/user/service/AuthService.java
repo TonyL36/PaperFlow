@@ -48,6 +48,8 @@ public class AuthService {
     u.setPasswordHash(passwordEncoder.encode(req.password()));
     u.setDisplayName(req.displayName());
     u.setRoles("USER");
+    u.setStatus("ACTIVE");
+    u.setEmailVerifiedAt(now);
     u.setCreatedAt(now);
     u.setUpdatedAt(now);
     return users.save(u);
@@ -59,6 +61,9 @@ public class AuthService {
         .orElseThrow(() -> new ServiceException("AUTH_INVALID_CREDENTIALS", "Invalid credentials"));
     if (!passwordEncoder.matches(req.password(), u.getPasswordHash())) {
       throw new ServiceException("AUTH_INVALID_CREDENTIALS", "Invalid credentials");
+    }
+    if (!"ACTIVE".equalsIgnoreCase(u.getStatus())) {
+      throw new ServiceException("AUTH_DISABLED", "Account disabled");
     }
 
     return issueTokens(u);
@@ -78,6 +83,11 @@ public class AuthService {
 
     UserEntity u = users.findById(t.getUserId())
         .orElseThrow(() -> new ServiceException("AUTH_INVALID_TOKEN", "Invalid refresh token"));
+    if (!"ACTIVE".equalsIgnoreCase(u.getStatus())) {
+      t.setRevoked(true);
+      refreshTokens.save(t);
+      throw new ServiceException("AUTH_DISABLED", "Account disabled");
+    }
     t.setRevoked(true);
     refreshTokens.save(t);
     return issueTokens(u);
@@ -132,4 +142,3 @@ public class AuthService {
     }
   }
 }
-
