@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MinerU + DeepSeek 划词翻译 Demo</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+</head>
+<body>
+  <div class="container">
+    <h1>MinerU + DeepSeek 划词翻译 Demo</h1>
+    <div class="panel">
+      <input id="pdfFile" type="file" accept="application/pdf" />
+      <button id="uploadBtn">上传并解析</button>
+      <span id="statusText">等待上传</span>
+    </div>
+    <div class="panel translate-options">
+      <label>DeepSeek API Key
+        <input id="apiKey" type="password" placeholder="sk-..." />
+      </label>
+      <button id="saveKeyBtn">保存 Key</button>
+      <label>模式
+        <select id="mode">
+          <option value="auto">自动</option>
+          <option value="text">文本翻译</option>
+          <option value="formula">公式解释</option>
+        </select>
+      </label>
+      <label>源语言
+        <input id="sourceLang" value="English" />
+      </label>
+      <label>目标语言
+        <input id="targetLang" value="中文" />
+      </label>
+    </div>
+    <div class="workspace">
+      <div id="pdfContainer"></div>
+      <div id="resultPanel">
+        <h2>翻译结果</h2>
+        <div id="translationResult"></div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+  <script defer src="/static/app.js"></script>
+</body>
+</html>

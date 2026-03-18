@@ -1,0 +1,118 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  margin: 0 0 16px;
+}
+
+.panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px;
+  align-items: start;
+}
+
+#pdfContainer {
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.page-container {
+  position: relative;
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.pdf-canvas {
+  display: block;
+}
+
+.text-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  color: transparent;
+  user-select: text;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.text-layer span {
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0 0;
+  line-height: 1;
+}
+
+#resultPanel {
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  position: sticky;
+  top: 12px;
+  min-height: 320px;
+}
+
+#translationResult {
+  white-space: normal;
+  word-break: break-word;
+}
+
+#translationResult .text-block {
+  white-space: pre-wrap;
+}
+
+#translationResult .latex-block {
+  margin: 8px 0;
+}
+
+#translationResult .latex-block .katex {
+  font-size: 1.15em;
+}
+
+#translationResult .context-block {
+  margin-top: 12px;
+  color: #6b7280;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
