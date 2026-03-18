@@ -1,0 +1,65 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${USER_DB_URL:jdbc:h2:mem:userdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}
+    username: ${USER_DB_USER:sa}
+    password: ${USER_DB_PASS:}
+  mail:
+    host: ${PF_MAIL_HOST:}
+    port: ${PF_MAIL_PORT:465}
+    username: ${PF_MAIL_USERNAME:}
+    password: ${PF_MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
+          starttls:
+            enable: false
+            required: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+
+paperflow:
+  auth:
+    jwtSecret: ${PF_JWT_SECRET:change-me-in-dev-change-me-in-dev-change-me}
+    accessTokenTtlSeconds: ${PF_ACCESS_TTL:900}
+    refreshTokenTtlSeconds: ${PF_REFRESH_TTL:2592000}
+  qq:
+    mock: ${PF_QQ_MOCK:true}
+    appId: ${PF_QQ_APP_ID:}
+    appSecret: ${PF_QQ_APP_SECRET:}
+    redirectUri: ${PF_QQ_REDIRECT_URI:http://localhost:3151/api/v1/oauth/qq/callback}
+    stateSecret: ${PF_QQ_STATE_SECRET:change-me-qq-state-secret}
+  wechat:
+    mock: ${PF_WECHAT_MOCK:true}
+    appId: ${PF_WECHAT_APP_ID:}
+    appSecret: ${PF_WECHAT_APP_SECRET:}
+    redirectUri: ${PF_WECHAT_REDIRECT_URI:http://localhost:3151/api/v1/oauth/wechat/callback}
+    stateSecret: ${PF_WECHAT_STATE_SECRET:change-me-wechat-state-secret}
+  mail:
+    enabled: ${PF_MAIL_ENABLED:true}
+    from: ${PF_MAIL_FROM:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

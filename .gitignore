@@ -1,2 +1,40 @@
 data/
 venv/
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Trae / local dev state
+.trae/
+.dev/
+
+# Local tools cache
+.tools/
+
+# Logs
+*.log
+*.log.*
+
+# Java / Maven / Gradle
+**/target/
+**/.classpath
+**/.project
+**/.settings/
+**/.gradle/
+
+# Node / Vite
+**/node_modules/
+apps/**/dist/
+apps/**/.vite/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files (keep docker/env/*.env in repo; ignore local overrides)
+.env
+.env.*
+scripts/env/local.env.bat

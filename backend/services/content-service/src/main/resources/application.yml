@@ -1,0 +1,26 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /api/v1
+  tomcat:
+    relaxed-query-chars: ['[', ']']
+
+spring:
+  application:
+    name: content-service
+  datasource:
+    url: ${CONTENT_DB_URL:jdbc:h2:mem:contentdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}
+    username: ${CONTENT_DB_USER:sa}
+    password: ${CONTENT_DB_PASS:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
