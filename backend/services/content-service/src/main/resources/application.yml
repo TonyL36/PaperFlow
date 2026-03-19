@@ -9,7 +9,7 @@ spring:
   application:
     name: content-service
   datasource:
-    url: ${CONTENT_DB_URL:jdbc:h2:mem:contentdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}
+    url: ${CONTENT_DB_URL:jdbc:h2:file:./.dev/h2/contentdb;MODE=PostgreSQL;AUTO_SERVER=TRUE}
     username: ${CONTENT_DB_USER:sa}
     password: ${CONTENT_DB_PASS:}
   jpa:

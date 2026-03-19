@@ -20,6 +20,12 @@ export function TopNav() {
         {auth.state.status === "authenticated" ? (
           <>
             <NavLink
+              to="/me"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              Profile
+            </NavLink>
+            <NavLink
               to="/favorites"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
@@ -52,7 +58,8 @@ export function TopNav() {
         <div className="pf-navspacer" />
         {auth.state.status === "authenticated" ? (
           <div className="pf-row">
-            <span className="pf-muted">Signed in</span>
+            {auth.state.avatarUrl ? <img src={auth.state.avatarUrl} alt="avatar" className="pf-avatar" /> : <div className="pf-avatar">{auth.state.displayName.slice(0, 1) || "U"}</div>}
+            <span className="pf-muted">{auth.state.displayName}</span>
             <Button
               onClick={() => {
                 void auth.logout();

@@ -12,6 +12,7 @@
 脚本说明：
 - `scripts/run-local.bat`：Windows 入口脚本（读取可选的本地环境变量文件，再调用 `scripts/dev.ps1`）
 - `scripts/dev.ps1`：实际启动器（启动 content-service、user-service、api-gateway、前端 dev server）
+- `scripts/backup-local-db.bat`：本地数据库备份脚本（迁移前建议先执行）
 
 ## 19.2 本地环境变量文件（建议）
 
@@ -32,6 +33,15 @@
 2. 在 `local.env.bat` 里填入自己的邮箱账号/授权码等敏感信息
 
 注意：`scripts/env/local.env.bat` 已加入 `.gitignore`，避免误提交敏感信息。
+
+## 19.4 数据库迁移前备份建议
+
+执行 Flyway 结构变更前，建议先备份本地数据库文件，避免误操作导致数据丢失：
+
+- `.\scripts\backup-local-db.bat`
+
+备份目录示例：
+- `.\.dev\backup\h2-20260319-162800\`
 
 ## 19.3 常用可配置项
 
@@ -59,4 +69,3 @@
 - OAuth（user-service，绑定）
   - `PF_QQ_MOCK / PF_QQ_STATE_SECRET / PF_QQ_APP_ID / PF_QQ_APP_SECRET / PF_QQ_REDIRECT_URI`
   - `PF_WECHAT_MOCK / PF_WECHAT_STATE_SECRET / PF_WECHAT_APP_ID / PF_WECHAT_APP_SECRET / PF_WECHAT_REDIRECT_URI`
-

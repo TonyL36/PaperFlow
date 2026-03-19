@@ -44,3 +44,17 @@ export type AdminUser = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type UserProfile = {
+  userId: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  status: "ACTIVE" | "DISABLED" | string;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  phone?: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  qqBound: boolean;
+};

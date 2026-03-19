@@ -7,6 +7,7 @@ import { AdminCommentsPage } from "./pages/AdminCommentsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { FootprintsPage } from "./pages/FootprintsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { useAuth } from "./auth/AuthContext";
 import { TopNav } from "./layout/TopNav";
 import { NotFoundPage } from "./layout/NotFoundPage";
@@ -26,6 +27,14 @@ export function App() {
             <Route path="/posts" element={<PostsPage />} />
             <Route path="/posts/:postId" element={<PostDetailPage />} />
             <Route path="/viz" element={<VisualizationPage />} />
+            <Route
+              path="/me"
+              element={
+                <RequireAuth>
+                  <ProfilePage />
+                </RequireAuth>
+              }
+            />
             <Route
               path="/favorites"
               element={

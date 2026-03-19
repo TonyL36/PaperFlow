@@ -25,6 +25,9 @@ public class PostEntity {
   @Column(name = "published_at", nullable = false)
   private OffsetDateTime publishedAt;
 
+  @Column(name = "author_user_id", length = 64)
+  private String authorUserId;
+
   public String getId() {
     return id;
   }
@@ -64,5 +67,12 @@ public class PostEntity {
   public void setPublishedAt(OffsetDateTime publishedAt) {
     this.publishedAt = publishedAt;
   }
-}
 
+  public String getAuthorUserId() {
+    return authorUserId;
+  }
+
+  public void setAuthorUserId(String authorUserId) {
+    this.authorUserId = authorUserId;
+  }
+}

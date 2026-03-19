@@ -345,6 +345,18 @@ button:disabled{
   background: rgba(55, 53, 47, 0.07);
   color: var(--pf-text-2);
 }
+.pf-avatar{
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(55, 53, 47, 0.08);
+  border: 1px solid var(--pf-border);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--pf-text-2);
+  object-fit: cover;
+}
 .pf-alert{
   border-radius: var(--pf-radius-sm);
   padding: 10px 12px;

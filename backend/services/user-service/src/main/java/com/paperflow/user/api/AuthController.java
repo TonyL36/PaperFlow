@@ -97,7 +97,7 @@ public class AuthController {
       data.put("delivery", "DISABLED");
     }
     data.put("expiresAt", v.getExpiresAt());
-    if (isInMemoryH2()) {
+    if (isInMemoryH2() || !mail.isEnabled()) {
       data.put("debugCode", code);
     }
     return ResponseEntity.ok(Envelope.ok(safeRequestId(requestId), data, List.of()));
@@ -227,7 +227,7 @@ public class AuthController {
         data.put("delivery", "DISABLED");
       }
       data.put("expiresAt", v.getExpiresAt());
-      if (isInMemoryH2()) {
+      if (isInMemoryH2() || !mail.isEnabled()) {
         data.put("debugCode", code);
       }
     }

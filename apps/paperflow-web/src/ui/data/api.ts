@@ -1,5 +1,5 @@
 import { httpJson } from "./http";
-import type { AdminUser, Comment, Paged, Post } from "./types";
+import type { AdminUser, Comment, Paged, Post, UserProfile } from "./types";
 
 type LoginReq = { email: string; password: string };
 type AuthResp = { accessToken: string };
@@ -30,6 +30,17 @@ export async function apiRequestPasswordReset(email: string): Promise<{ expiresA
 
 export async function apiConfirmPasswordReset(email: string, code: string, newPassword: string): Promise<void> {
   await httpJson<Record<string, never>>("/api/v1/auth/password/confirm", { method: "POST", body: JSON.stringify({ email, code, newPassword }) });
+}
+
+export async function apiGetMyProfile(accessToken: string, signal?: AbortSignal): Promise<UserProfile> {
+  return httpJson<UserProfile>("/api/v1/users/me", { method: "GET", accessToken, signal });
+}
+
+export async function apiUpdateMyProfile(
+  accessToken: string,
+  patch: { displayName: string; avatarUrl?: string | null; bio?: string | null }
+): Promise<UserProfile> {
+  return httpJson<UserProfile>("/api/v1/users/me", { method: "PATCH", accessToken, body: JSON.stringify(patch) });
 }
 
 export async function apiListPosts(pageNumber: number, pageSize: number, signal?: AbortSignal): Promise<Paged<Post>> {

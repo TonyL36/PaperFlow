@@ -15,6 +15,12 @@
 - API 设计规范：[api-design-spec.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/api-design-spec.md)
 - 开发记录（可拆成博客）：[dev-notes.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/dev-notes.md)
 - 按功能拆分（含代码原文与详细解读）：[00-index.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/00-index.md)
+- 项目开发要求总览（新同学快速入门）：[20-project-dev-requirements-overview.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-dev-requirements-overview.md)
+- 后端数据库设计说明：[21-backend-database-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-backend-database-design.md)
+- 每日开发记录：
+  - [2026-03-18.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/daily/2026-03-18.md)
+  - [2026-03-17.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/daily/2026-03-17.md)
+  - [2026-03-16.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/daily/2026-03-16.md)
 
 ## 工程结构
 

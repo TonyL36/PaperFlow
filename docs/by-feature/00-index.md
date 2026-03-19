@@ -35,6 +35,8 @@
 - 11 Controller 扫描生成文档插件： [11-apidoc-plugin.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/11-apidoc-plugin.md)
 - 12 一键部署（dev/test/prod）： [12-deploy.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/12-deploy.md)
 - 19 本地启动与可配置项脚本： [19-local-dev-scripts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/19-local-dev-scripts.md)
+- 20 项目开发要求总览： [20-project-dev-requirements-overview.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-dev-requirements-overview.md)
+- 21 后端数据库设计说明： [21-backend-database-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-backend-database-design.md)
 
 ## 5. 前端（paperflow-web）
 

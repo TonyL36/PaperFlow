@@ -60,6 +60,7 @@ public class AgentIngestController {
     p.setTitle(req.title());
     p.setContent(req.content());
     p.setSource(req.source());
+    p.setAuthorUserId(normalizeUserId(req.userId()));
     p.setPublishedAt(req.publishedAt() == null ? OffsetDateTime.now() : req.publishedAt());
     posts.save(p);
 
@@ -73,6 +74,13 @@ public class AgentIngestController {
   private String normalizePostId(String raw) {
     if (raw == null || raw.isBlank()) {
       return "post_demo_" + UUID.randomUUID().toString().replace("-", "");
+    }
+    return raw.trim();
+  }
+
+  private String normalizeUserId(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return null;
     }
     return raw.trim();
   }

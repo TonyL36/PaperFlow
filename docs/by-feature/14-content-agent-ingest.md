@@ -45,6 +45,7 @@
 ```json
 {
   "postId": "post_demo_manual_001",
+  "userId": "u_agent_001",
   "title": "Demo Title",
   "content": "# Hello\n- item 1\n- item 2",
   "source": "agent-demo",
@@ -149,6 +150,7 @@ public class DemoIngestProperties {
 ```java
 public record IngestPostRequest(
     String postId,
+    String userId,
     @NotBlank @Size(min = 1, max = 255) String title,
     @NotBlank @Size(min = 1, max = 20000) String content,
     @NotBlank @Size(min = 1, max = 64) String source,
@@ -160,6 +162,12 @@ public record IngestPostRequest(
 
 - `title/content/source` 走 Bean Validation，避免“演示脚本推了空数据但看起来是成功”。
 - `postId/publishedAt` 可空，便于脚本快速造数据。
+- `userId` 用于与外部 Agent 侧用户标识对齐，会落库到 `pf_post.author_user_id`。
+
+ID 约定：
+
+- `postId` 由调用方传入时，内容服务会直接作为本地主键写入，实现“外部 Agent 与本地共用一个文章 ID”。
+- 当 `postId` 为空时，服务端自动生成 `post_demo_<uuid>`。
 
 ## 测试：模拟发送/接收/展示闭环
 
@@ -224,4 +232,3 @@ Invoke-RestMethod -Method POST `
 - `docs/generated/content-service-api.md`
 
 生成方式：在仓库根目录执行 `mvn verify`（Windows 可用脚本包装），注意生成时不要占用正在运行的 jar 文件（否则 repackage 可能无法重命名）。
-

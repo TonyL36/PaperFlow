@@ -7,7 +7,7 @@ spring:
   application:
     name: user-service
   datasource:
-    url: ${USER_DB_URL:jdbc:h2:mem:userdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}
+    url: ${USER_DB_URL:jdbc:h2:file:./.dev/h2/userdb;MODE=PostgreSQL;AUTO_SERVER=TRUE}
     username: ${USER_DB_USER:sa}
     password: ${USER_DB_PASS:}
   mail:
