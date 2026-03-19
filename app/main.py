@@ -49,6 +49,7 @@ deepseek_client = DeepSeekClient(
     model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
     base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
 )
+ALLOW_CLIENT_API_KEY = os.getenv("ALLOW_CLIENT_API_KEY", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 @dataclass
@@ -502,7 +503,7 @@ async def translate(req: TranslateRequest) -> dict[str, Any]:
     translated = await deepseek_client.translate(
         system_prompt=system_prompt,
         user_prompt=user_prompt,
-        api_key=req.deepseek_api_key.strip() or None,
+        api_key=req.deepseek_api_key.strip() if ALLOW_CLIENT_API_KEY else None,
     )
     latex = ""
     explanation = ""

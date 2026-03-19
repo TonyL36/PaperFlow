@@ -6,8 +6,6 @@ const translationResult = document.getElementById("translationResult");
 const modeSelect = document.getElementById("mode");
 const sourceLangInput = document.getElementById("sourceLang");
 const targetLangInput = document.getElementById("targetLang");
-const apiKeyInput = document.getElementById("apiKey");
-const saveKeyBtn = document.getElementById("saveKeyBtn");
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -16,8 +14,6 @@ const state = {
   parsedResult: null,
   pageMetrics: new Map()
 };
-
-const API_KEY_STORAGE_KEY = "paperflow.deepseek_api_key";
 
 function setStatus(text) {
   statusText.textContent = text;
@@ -30,17 +26,6 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function loadApiKey() {
-  const cached = localStorage.getItem(API_KEY_STORAGE_KEY) || "";
-  apiKeyInput.value = cached;
-}
-
-function saveApiKey() {
-  const value = (apiKeyInput.value || "").trim();
-  localStorage.setItem(API_KEY_STORAGE_KEY, value);
-  setStatus(value ? "API Key 已保存到本地浏览器" : "已清空本地 API Key");
 }
 
 async function uploadPdf(file) {
@@ -179,8 +164,7 @@ async function requestTranslate(info) {
     source_lang: sourceLangInput.value || "English",
     target_lang: targetLangInput.value || "中文",
     page_height: info.page_height,
-    scale: info.scale,
-    deepseek_api_key: (apiKeyInput.value || "").trim()
+    scale: info.scale
   };
   const res = await fetch("/api/translate", {
     method: "POST",
@@ -254,9 +238,3 @@ document.addEventListener("mouseup", async () => {
     translationResult.textContent = `错误: ${error.message}`;
   }
 });
-
-saveKeyBtn.addEventListener("click", () => {
-  saveApiKey();
-});
-
-loadApiKey();
