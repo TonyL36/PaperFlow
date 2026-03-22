@@ -50,7 +50,7 @@ function Load-Pids {
 function Stop-ByPid($procId) {
   if ($procId -eq $null) { return }
   try {
-    & taskkill.exe /PID ([int]$procId) /T /F | Out-Null
+    & taskkill.exe /PID ([int]$procId) /T /F 2>$null | Out-Null
   } catch {
   }
 }
@@ -59,31 +59,67 @@ function Get-ListeningPidByPort([int]$port) {
   $lines = & netstat -ano -p tcp | Select-String -Pattern (":$port\s+.*LISTENING\s+(\d+)\s*$") -AllMatches
   foreach ($m in $lines.Matches) {
     if ($m.Groups.Count -ge 2) {
-      $pid = $m.Groups[1].Value
-      if ($pid) { return [int]$pid }
+      $listenPidValue = $m.Groups[1].Value
+      if ($listenPidValue) { return [int]$listenPidValue }
     }
   }
   return $null
 }
 
 function Stop-ByPort([int]$port) {
-  $pid = Get-ListeningPidByPort $port
-  if ($pid -ne $null) {
-    Stop-ByPid $pid
+  $listenPid = Get-ListeningPidByPort $port
+  if ($listenPid -ne $null) {
+    Stop-ByPid $listenPid
   }
+}
+
+function Stop-Stack($pids, [int]$GatewayPort, [int]$UserServicePort, [int]$ContentServicePort, [int]$SpaPort) {
+  if ($pids) {
+    Stop-ByPid $pids.spa
+    Stop-ByPid $pids.gateway
+    Stop-ByPid $pids.userService
+    Stop-ByPid $pids.contentService
+  }
+  Stop-ByPort $SpaPort
+  Stop-ByPort $GatewayPort
+  Stop-ByPort $UserServicePort
+  Stop-ByPort $ContentServicePort
 }
 
 function Wait-Http([string]$url, [int]$timeoutSeconds = 20) {
   $deadline = (Get-Date).AddSeconds($timeoutSeconds)
   while ((Get-Date) -lt $deadline) {
     try {
-      $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2
-      if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { return $true }
+      $code = 0
+      $req = [System.Net.HttpWebRequest]::Create($url)
+      $req.Method = "GET"
+      $req.Timeout = 2000
+      try {
+        $resp = $req.GetResponse()
+        $code = [int]$resp.StatusCode
+        $resp.Close()
+      } catch [System.Net.WebException] {
+        if ($_.Exception.Response) {
+          $code = [int]$_.Exception.Response.StatusCode
+          $_.Exception.Response.Close()
+        }
+      }
+      if ($code -ge 200 -and $code -lt 500) { return $true }
     } catch {
     }
     Start-Sleep -Milliseconds 400
   }
   return $false
+}
+
+function Get-LatestJar([string]$dir, [string]$prefix) {
+  $files = Get-ChildItem -Path $dir -Filter "$prefix-*.jar" -File -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -notlike "*.jar.original" } |
+      Sort-Object LastWriteTimeUtc -Descending
+  if (!$files -or $files.Count -eq 0) {
+    return $null
+  }
+  return $files[0].FullName
 }
 
 Ensure-Dirs
@@ -110,13 +146,8 @@ if ($Action -eq "status") {
 
 if ($Action -eq "down") {
   $pids = Load-Pids
-  if ($pids) {
-    Stop-ByPid $pids.spa
-    Stop-ByPid $pids.gateway
-    Stop-ByPid $pids.userService
-    Stop-ByPid $pids.contentService
-    Remove-Item -Force -ErrorAction SilentlyContinue $pidFile | Out-Null
-  }
+  Stop-Stack $pids $GatewayPort $UserServicePort $ContentServicePort $SpaPort
+  Remove-Item -Force -ErrorAction SilentlyContinue $pidFile | Out-Null
   Write-Host "down ok"
   exit 0
 }
@@ -164,9 +195,9 @@ if (!$SkipBuild) {
   }
 }
 
-$gatewayJar = Join-Path $root "backend/services/api-gateway/target/api-gateway-0.1.0-SNAPSHOT.jar"
-$userJar = Join-Path $root "backend/services/user-service/target/user-service-0.1.0-SNAPSHOT.jar"
-$contentJar = Join-Path $root "backend/services/content-service/target/content-service-0.1.0-SNAPSHOT.jar"
+$gatewayJar = Get-LatestJar (Join-Path $root "backend/services/api-gateway/target") "api-gateway"
+$userJar = Get-LatestJar (Join-Path $root "backend/services/user-service/target") "user-service"
+$contentJar = Get-LatestJar (Join-Path $root "backend/services/content-service/target") "content-service"
 $spaDir = Join-Path $root "apps/paperflow-web"
 $npmCmd = (Get-Command "npm.cmd" -ErrorAction SilentlyContinue).Source
 if (!$npmCmd) { $npmCmd = "npm.cmd" }
@@ -182,58 +213,62 @@ if (Is-PortOpen $ContentServicePort) { throw "port in use: $ContentServicePort" 
 
 $ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
 $pids = [ordered]@{}
-
-$p1 = Start-Process -FilePath "java" -ArgumentList @(
-    "-jar", $contentJar,
-    "--server.port=$ContentServicePort",
-    "--paperflow.demo-ingest.enabled=true",
-    "--paperflow.demo-ingest.token=$DemoIngestToken"
-  ) -WorkingDirectory $root -RedirectStandardOutput (Join-Path $logDir "content-service-$ts.log") -RedirectStandardError (Join-Path $logDir "content-service-$ts.err.log") -WindowStyle Hidden -PassThru
-$pids.contentService = $p1.Id
-
-$p2 = Start-Process -FilePath "java" -ArgumentList @(
-    "-jar", $userJar,
-    "--server.port=$UserServicePort"
-  ) -WorkingDirectory $root -RedirectStandardOutput (Join-Path $logDir "user-service-$ts.log") -RedirectStandardError (Join-Path $logDir "user-service-$ts.err.log") -WindowStyle Hidden -PassThru
-$pids.userService = $p2.Id
-
-$prevUserUrl = $env:USER_SERVICE_URL
-$prevContentUrl = $env:CONTENT_SERVICE_URL
-$env:USER_SERVICE_URL = "http://localhost:$UserServicePort"
-$env:CONTENT_SERVICE_URL = "http://localhost:$ContentServicePort"
-$p3 = Start-Process -FilePath "java" -ArgumentList @(
-    "-jar", $gatewayJar,
-    "--server.port=$GatewayPort"
-  ) -WorkingDirectory $root -RedirectStandardOutput (Join-Path $logDir "api-gateway-$ts.log") -RedirectStandardError (Join-Path $logDir "api-gateway-$ts.err.log") -WindowStyle Hidden -PassThru
-$pids.gateway = $p3.Id
-$env:USER_SERVICE_URL = $prevUserUrl
-$env:CONTENT_SERVICE_URL = $prevContentUrl
-
-Push-Location $spaDir
 try {
+  $p1 = Start-Process -FilePath "java" -ArgumentList @(
+      "-jar", $contentJar,
+      "--server.port=$ContentServicePort",
+      "--paperflow.demo-ingest.enabled=true",
+      "--paperflow.demo-ingest.token=$DemoIngestToken"
+    ) -WorkingDirectory $root -RedirectStandardOutput (Join-Path $logDir "content-service-$ts.log") -RedirectStandardError (Join-Path $logDir "content-service-$ts.err.log") -WindowStyle Hidden -PassThru
+  $pids.contentService = $p1.Id
+
+  $p2 = Start-Process -FilePath "java" -ArgumentList @(
+      "-jar", $userJar,
+      "--server.port=$UserServicePort"
+    ) -WorkingDirectory $root -RedirectStandardOutput (Join-Path $logDir "user-service-$ts.log") -RedirectStandardError (Join-Path $logDir "user-service-$ts.err.log") -WindowStyle Hidden -PassThru
+  $pids.userService = $p2.Id
+
+  $prevUserUrl = $env:USER_SERVICE_URL
+  $prevContentUrl = $env:CONTENT_SERVICE_URL
+  $env:USER_SERVICE_URL = "http://localhost:$UserServicePort"
+  $env:CONTENT_SERVICE_URL = "http://localhost:$ContentServicePort"
+  $p3 = Start-Process -FilePath "java" -ArgumentList @(
+      "-jar", $gatewayJar,
+      "--server.port=$GatewayPort"
+    ) -WorkingDirectory $root -RedirectStandardOutput (Join-Path $logDir "api-gateway-$ts.log") -RedirectStandardError (Join-Path $logDir "api-gateway-$ts.err.log") -WindowStyle Hidden -PassThru
+  $pids.gateway = $p3.Id
+  $env:USER_SERVICE_URL = $prevUserUrl
+  $env:CONTENT_SERVICE_URL = $prevContentUrl
+
+  Push-Location $spaDir
+  try {
+    $prevViteApi = $env:VITE_API_BASE
+    $env:VITE_API_BASE = "http://localhost:$GatewayPort"
+    if (!(Test-Path "node_modules")) {
+      & $npmCmd "i" | Out-Null
+    }
+  } finally {
+    $env:VITE_API_BASE = $prevViteApi
+    Pop-Location
+  }
+
   $prevViteApi = $env:VITE_API_BASE
   $env:VITE_API_BASE = "http://localhost:$GatewayPort"
-  if (!(Test-Path "node_modules")) {
-    & $npmCmd "i" | Out-Null
-  }
-} finally {
+  $p4 = Start-Process -FilePath $npmCmd -ArgumentList @("run", "dev", "--", "--port", "$SpaPort") -WorkingDirectory $spaDir -RedirectStandardOutput (Join-Path $logDir "spa-$ts.log") -RedirectStandardError (Join-Path $logDir "spa-$ts.err.log") -WindowStyle Hidden -PassThru
   $env:VITE_API_BASE = $prevViteApi
-  Pop-Location
+  $pids.spa = $p4.Id
+
+  if (!(Wait-Http "http://localhost:$ContentServicePort/api/v1/actuator/health" 35)) { throw "content-service not ready" }
+  if (!(Wait-Http "http://localhost:$UserServicePort/api/v1/actuator/health" 35)) { throw "user-service not ready" }
+  if (!(Wait-Http "http://localhost:$GatewayPort/actuator/health" 35)) { throw "api-gateway not ready" }
+  if (!(Wait-Http "http://localhost:$GatewayPort/api/v1/posts?page[number]=1&page[size]=1" 35)) { throw "gateway upstream route not ready" }
+
+  Save-Pids $pids
+  Write-Host ("gateway: http://localhost:{0}" -f $GatewayPort)
+  Write-Host ("spa:     http://localhost:{0}/paperflow/" -f $SpaPort)
+  Write-Host ("token:   {0}" -f $DemoIngestToken)
+} catch {
+  Stop-Stack $pids $GatewayPort $UserServicePort $ContentServicePort $SpaPort
+  Remove-Item -Force -ErrorAction SilentlyContinue $pidFile | Out-Null
+  throw ("startup failed: {0}. check logs under .dev/logs with timestamp {1}" -f $_.Exception.Message, $ts)
 }
-
-$prevViteApi = $env:VITE_API_BASE
-$env:VITE_API_BASE = "http://localhost:$GatewayPort"
-$p4 = Start-Process -FilePath $npmCmd -ArgumentList @("run", "dev", "--", "--port", "$SpaPort") -WorkingDirectory $spaDir -RedirectStandardOutput (Join-Path $logDir "spa-$ts.log") -RedirectStandardError (Join-Path $logDir "spa-$ts.err.log") -WindowStyle Hidden -PassThru
-$env:VITE_API_BASE = $prevViteApi
-$pids.spa = $p4.Id
-
-Save-Pids $pids
-
-Wait-Http "http://localhost:$ContentServicePort/api/v1/actuator/health" 25 | Out-Null
-Wait-Http "http://localhost:$UserServicePort/api/v1/actuator/health" 25 | Out-Null
-Wait-Http "http://localhost:$GatewayPort/actuator/health" 25 | Out-Null
-Wait-Http "http://localhost:$GatewayPort/api/v1/posts?page[number]=1&page[size]=1" 25 | Out-Null
-
-Write-Host ("gateway: http://localhost:{0}" -f $GatewayPort)
-Write-Host ("spa:     http://localhost:{0}/paperflow/" -f $SpaPort)
-Write-Host ("token:   {0}" -f $DemoIngestToken)

@@ -27,6 +27,7 @@
 - `scripts/env/30-databases.sample.bat`
 - `scripts/env/40-gateway.sample.bat`
 - `scripts/env/50-ports.sample.bat`
+- `scripts/env/60-pathfinder-ai.sample.bat`
 
 建议做法：
 1. 复制 `scripts/env/local.env.sample.bat` 为 `scripts/env/local.env.bat`
@@ -56,6 +57,8 @@
   - `PF_JWT_SECRET`
   - `PF_ACCESS_TTL`
   - `PF_RL_ANON_PER_MIN`
+  - `PF_RL_AUTH_PER_MIN`
+  - `PF_RL_PUBLIC_PER_MIN`
   - `PF_RL_USER_PER_MIN`
 
 - 数据库（user-service / content-service）
@@ -69,3 +72,15 @@
 - OAuth（user-service，绑定）
   - `PF_QQ_MOCK / PF_QQ_STATE_SECRET / PF_QQ_APP_ID / PF_QQ_APP_SECRET / PF_QQ_REDIRECT_URI`
   - `PF_WECHAT_MOCK / PF_WECHAT_STATE_SECRET / PF_WECHAT_APP_ID / PF_WECHAT_APP_SECRET / PF_WECHAT_REDIRECT_URI`
+
+- Pathfinder 模型调用（content-service）
+  - `PF_PATHFINDER_AI_ENDPOINT`
+  - `PF_PATHFINDER_AI_API_KEY`
+  - `PF_PATHFINDER_AI_KEY_PAIRS`
+  - `PF_PATHFINDER_AI_TIMEOUT_MS`
+
+## 19.5 本项目测试执行规则（Trae）
+
+- 在 Trae 中执行 `npm run build` 时，若约 30s 内未返回，终端可能进入 `RunningSkipped` 状态（并非一定构建失败）。
+- 遇到该状态时，优先按“后端 compile + 关键接口调用 + IDE 诊断”完成验证，不把 `RunningSkipped` 直接判定为失败。
+- 若需要确认前端产物，建议重试一次构建；如仍被跳过，以接口验证和诊断结果为准，并在交付说明中注明。

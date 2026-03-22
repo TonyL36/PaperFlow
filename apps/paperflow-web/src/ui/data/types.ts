@@ -58,3 +58,41 @@ export type UserProfile = {
   phoneVerified: boolean;
   qqBound: boolean;
 };
+
+export type PathfinderMessage = {
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+};
+
+export type PathfinderModel = "glm-4-flash" | "glm-z1-flash";
+
+export type PathfinderStageStatus = "done" | "in_progress" | "locked";
+
+export type PathfinderReadingItem = {
+  id: string;
+  title: string;
+  done: boolean;
+};
+
+export type PathfinderStage = {
+  id: string;
+  title: string;
+  objective: string;
+  readings: PathfinderReadingItem[];
+  status: PathfinderStageStatus;
+  etaDays: number;
+};
+
+export type PathfinderSession = {
+  sessionId: string;
+  goal: string;
+  model: PathfinderModel;
+  focus: string[];
+  stages: PathfinderStage[];
+  messages: PathfinderMessage[];
+  activeStageId?: string | null;
+  favorited: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

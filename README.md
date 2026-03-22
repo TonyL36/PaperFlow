@@ -47,6 +47,37 @@ Linux/macOS：
 .\scripts\bootstrap-maven.ps1 -Cmd verify
 ```
 
+## 本地双击启动（Windows）
+
+- 直接双击：`scripts/run-local.bat`
+  - 默认行为：`up build`
+  - 启动成功后自动打开 SPA 与网关验证地址
+
+常用命令：
+
+```powershell
+.\scripts\run-local.bat
+.\scripts\run-local.bat up quick
+.\scripts\run-local.bat up build --no-open
+.\scripts\run-local.bat up build -Force
+.\scripts\run-local.bat down
+.\scripts\run-local.bat status
+```
+
+参数说明：
+
+- `up|down|status`：启动、停止、查看状态
+- `build`：启动前执行后端打包
+- `quick|nobuild`：跳过打包，快速拉起
+- `--no-open`：启动后不自动打开浏览器
+- `-Force`：当端口被占用时，按端口强制清理后启动
+
+手动打包脚本（不启动服务）：
+
+```powershell
+.\scripts\build-local.bat
+```
+
 ## 前端本地跑通（先 Mock，再接真实网关）
 
 Mock 模式（推荐先跑通业务层与可视化）：

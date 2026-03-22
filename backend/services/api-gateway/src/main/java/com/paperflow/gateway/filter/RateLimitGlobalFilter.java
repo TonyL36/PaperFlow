@@ -40,7 +40,16 @@ public final class RateLimitGlobalFilter implements GlobalFilter, Ordered {
     );
 
     String userId = (String) exchange.getAttributes().get(ATTR_USER_ID);
-    int limit = isAuth || isPublic || userId == null ? props.getAnonymousPerMinute() : props.getUserPerMinute();
+    int limit;
+    if (isAuth) {
+      limit = props.getAuthPerMinute();
+    } else if (isPublic) {
+      limit = props.getPublicGetPerMinute();
+    } else if (userId == null) {
+      limit = props.getAnonymousPerMinute();
+    } else {
+      limit = props.getUserPerMinute();
+    }
     String key = userId == null ? "ip:" + clientIp(exchange) : "user:" + userId;
 
     InMemoryFixedWindowRateLimiter.Decision d = limiter.tryConsume(key, limit);

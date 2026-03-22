@@ -14,7 +14,8 @@ export function FavoritesPage() {
   if (auth.state.status !== "authenticated") {
     return <Navigate to="/login" replace />;
   }
-  const { state, reload } = useAsyncData((signal) => apiListFavorites(1, 50, auth.state.accessToken, signal), [auth.state.accessToken]);
+  const accessToken = auth.state.accessToken;
+  const { state, reload } = useAsyncData((signal) => apiListFavorites(1, 50, accessToken, signal), [accessToken]);
   const items = state.data?.items ?? [];
 
   return (
@@ -42,10 +43,11 @@ export function FavoritesPage() {
           </div>
         ))}
       </div>
-      <Card style={{ marginTop: 16 }}>
-        <div className="pf-muted2">提示：在帖子详情页点击“收藏/取消收藏”切换。</div>
-      </Card>
+      <div style={{ marginTop: 16 }}>
+        <Card>
+          <div className="pf-muted2">提示：在帖子详情页点击“收藏/取消收藏”切换。</div>
+        </Card>
+      </div>
     </Page>
   );
 }
-

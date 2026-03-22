@@ -25,8 +25,8 @@ public class DemoSeedUsersJob {
   @EventListener(ApplicationReadyEvent.class)
   public void seed() {
     String url = env.getProperty("spring.datasource.url", "");
-    boolean isInMemoryH2 = url != null && url.contains("jdbc:h2:mem:");
-    if (!isInMemoryH2) {
+    boolean isH2 = url != null && url.contains("jdbc:h2:");
+    if (!isH2) {
       return;
     }
 
@@ -51,4 +51,3 @@ public class DemoSeedUsersJob {
     users.save(u);
   }
 }
-

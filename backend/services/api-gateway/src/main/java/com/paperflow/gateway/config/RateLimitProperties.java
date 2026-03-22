@@ -5,6 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "paperflow.rate-limit")
 public class RateLimitProperties {
   private int anonymousPerMinute;
+  private int authPerMinute;
+  private int publicGetPerMinute;
   private int userPerMinute;
 
   public int getAnonymousPerMinute() {
@@ -21,5 +23,21 @@ public class RateLimitProperties {
 
   public void setUserPerMinute(int userPerMinute) {
     this.userPerMinute = userPerMinute;
+  }
+
+  public int getAuthPerMinute() {
+    return authPerMinute;
+  }
+
+  public void setAuthPerMinute(int authPerMinute) {
+    this.authPerMinute = authPerMinute;
+  }
+
+  public int getPublicGetPerMinute() {
+    return publicGetPerMinute;
+  }
+
+  public void setPublicGetPerMinute(int publicGetPerMinute) {
+    this.publicGetPerMinute = publicGetPerMinute;
   }
 }

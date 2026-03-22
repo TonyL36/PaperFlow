@@ -1,5 +1,5 @@
 import { httpJson } from "./http";
-import type { AdminUser, Comment, Paged, Post, UserProfile } from "./types";
+import type { AdminUser, Comment, Paged, PathfinderModel, PathfinderSession, PathfinderStage, Post, UserProfile } from "./types";
 
 type LoginReq = { email: string; password: string };
 type AuthResp = { accessToken: string };
@@ -130,5 +130,78 @@ export async function apiAdminRevokeUserTokens(accessToken: string, userId: stri
     method: "POST",
     accessToken,
     body: JSON.stringify({})
+  });
+}
+
+type PathfinderSessionPayload = {
+  goal: string;
+  model: PathfinderModel;
+  focus: string[];
+  stages: PathfinderStage[];
+  messages: Array<{ id: string; role: "assistant" | "user"; content: string }>;
+  activeStageId?: string | null;
+};
+
+type PathfinderGeneratePayload = {
+  goal: string;
+  model: PathfinderModel;
+};
+
+type PathfinderGenerateResponse = {
+  goal: string;
+  model: PathfinderModel;
+  focus: string[];
+  stages: PathfinderStage[];
+  assistantMessage: string;
+};
+
+export async function apiListPathfinderSessions(
+  accessToken: string,
+  pageNumber: number,
+  pageSize: number,
+  signal?: AbortSignal
+): Promise<Paged<PathfinderSession>> {
+  return httpJson<Paged<PathfinderSession>>(`/api/v1/pathfinder/sessions?page[number]=${pageNumber}&page[size]=${pageSize}`, {
+    method: "GET",
+    accessToken,
+    signal
+  });
+}
+
+export async function apiUpsertPathfinderSession(
+  accessToken: string,
+  sessionId: string,
+  payload: PathfinderSessionPayload
+): Promise<PathfinderSession> {
+  return httpJson<PathfinderSession>(`/api/v1/pathfinder/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "PUT",
+    accessToken,
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function apiGeneratePathfinderPlan(
+  accessToken: string,
+  payload: PathfinderGeneratePayload
+): Promise<PathfinderGenerateResponse> {
+  return httpJson<PathfinderGenerateResponse>("/api/v1/pathfinder/sessions/plan", {
+    method: "POST",
+    accessToken,
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function apiFavoritePathfinderSession(accessToken: string, sessionId: string): Promise<PathfinderSession> {
+  return httpJson<PathfinderSession>(`/api/v1/pathfinder/sessions/${encodeURIComponent(sessionId)}/favorite`, {
+    method: "POST",
+    accessToken,
+    body: JSON.stringify({})
+  });
+}
+
+export async function apiUnfavoritePathfinderSession(accessToken: string, sessionId: string): Promise<PathfinderSession> {
+  return httpJson<PathfinderSession>(`/api/v1/pathfinder/sessions/${encodeURIComponent(sessionId)}/favorite`, {
+    method: "DELETE",
+    accessToken
   });
 }

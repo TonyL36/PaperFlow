@@ -81,6 +81,7 @@
 - 负责页面呈现、用户交互与请求编排
 - 提供 Mock/真实网关两种联调模式
 - 统一错误态、空态与权限可见性处理
+- 提供 AI 阅读入口与 Pathfinder 学习路径闯关体验
 
 ### 2) API 网关（`backend/services/api-gateway`）
 
@@ -100,6 +101,8 @@
 - 评论创建与展示
 - 管理端评论审核与状态流转
 - 每日内容生成与演示数据能力
+- Pathfinder 路径生成、会话持久化与收藏能力
+- 按用户邮箱映射模型密钥，统一后端代理模型调用
 
 ### 5) 脚本与部署（`scripts` / `docker`）
 
@@ -165,6 +168,8 @@ cd F:\Gitee\PaperFlow\PaperFlow
 - 用户服务基础认证与资料能力已落地，数据库迁移脚本可复现
 - 内容服务帖子/评论/审核主链路已可用，并支持每日内容演进
 - 前端核心页面与管理页面已成型，支持 Mock 与真实模式切换
+- 前端 AI 阅读页与 Pathfinder 路径闯关链路已接入并可联调
+- 后端 Pathfinder 模型密钥映射能力已支持按邮箱路由与 fallback
 - 文档体系已形成“按功能拆分 + 接口生成 + 日报记录”三类入口
 - 本地运行与多环境部署脚本已打通
 
@@ -193,6 +198,8 @@ cd F:\Gitee\PaperFlow\PaperFlow
 
 3. 文档入口
    - 功能索引：`docs/by-feature/00-index.md`
+   - AI 阅读 + Pathfinder：`docs/by-feature/22-frontend-ai-reading-pathfinder.md`
+   - 模型密钥配置：`docs/by-feature/23-backend-pathfinder-model-key.md`
    - 流程总览：`docs/api-flow.md`
    - 设计规范：`docs/api-design-spec.md`
    - 变更记录：`docs/daily/*`

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiCreateComment, apiFavoritePost, apiGetPost, apiListComments, apiUnfavoritePost } from "../data/api";
 import type { Comment, Post } from "../data/types";
@@ -13,8 +13,11 @@ import { Spinner } from "../components/Spinner";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { Page } from "../layout/Page";
 import { formatDateTime, readingTimeMinutes, sourceMeta } from "../utils/format";
+import { resolvePaperPdf } from "../utils/paper";
 
 type DetailData = { post: Post | null; comments: Comment[] };
+type AiMessage = { id: string; role: "assistant" | "user"; content: string; references?: string[] };
+type SelectionPopover = { text: string; left: number; top: number };
 
 export function PostDetailPage() {
   const { postId } = useParams();
@@ -22,6 +25,14 @@ export function PostDetailPage() {
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<unknown | null>(null);
+  const [aiInput, setAiInput] = useState("");
+  const [aiReferences, setAiReferences] = useState<string[]>([]);
+  const [selectionPopover, setSelectionPopover] = useState<SelectionPopover | null>(null);
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([
+    { id: "m_welcome", role: "assistant", content: "你好，我是 PaperFlow 阅读助手。你可以让我总结、解释术语或提炼重点。" }
+  ]);
+  const articleBodyRef = useRef<HTMLDivElement | null>(null);
+  const selectionPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const pid = useMemo(() => (postId ? decodeURIComponent(postId) : ""), [postId]);
 
@@ -46,8 +57,114 @@ export function PostDetailPage() {
 
   const post = state.data?.post ?? null;
   const comments = state.data?.comments ?? [];
+  const paperMeta = post ? resolvePaperPdf(post.postId) : null;
   const canFavorite = auth.state.status === "authenticated" && !!post;
   const favorited = post?.favorited === true;
+  const clipReference = (text: string, max = 44) => {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (normalized.length <= max) return normalized;
+    return `${normalized.slice(0, max)}…`;
+  };
+  const hideSelectionPopover = () => {
+    setSelectionPopover(null);
+  };
+  const clearCurrentSelection = () => {
+    window.getSelection()?.removeAllRanges();
+  };
+  const resolveTranslatedText = (text: string) => {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (/[\u4e00-\u9fff]/.test(normalized)) {
+      return `English translation (demo): ${normalized}`;
+    }
+    return `中文翻译（演示）：${normalized}`;
+  };
+  const updateSelectionPopover = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      hideSelectionPopover();
+      return;
+    }
+    const text = selection.toString().replace(/\s+/g, " ").trim();
+    if (!text) {
+      hideSelectionPopover();
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    let ancestor: Node | null = range.commonAncestorContainer;
+    if (ancestor.nodeType === Node.TEXT_NODE) {
+      ancestor = ancestor.parentNode;
+    }
+    if (!(ancestor instanceof Element) || !articleBodyRef.current?.contains(ancestor)) {
+      hideSelectionPopover();
+      return;
+    }
+    const rect = range.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      hideSelectionPopover();
+      return;
+    }
+    const left = Math.max(12, Math.min(window.innerWidth - 254, rect.left + rect.width / 2 - 121));
+    const top = rect.top > 70 ? rect.top - 52 : rect.bottom + 10;
+    setSelectionPopover({ text, left, top });
+  };
+  const appendSelectionToReferences = () => {
+    if (!selectionPopover?.text) return;
+    setAiReferences((prev) => {
+      if (prev.includes(selectionPopover.text)) return prev;
+      return [...prev, selectionPopover.text];
+    });
+    hideSelectionPopover();
+    clearCurrentSelection();
+  };
+  const translateSelectionToChat = () => {
+    if (!selectionPopover?.text) return;
+    const now = Date.now();
+    const selected = selectionPopover.text;
+    const translated = resolveTranslatedText(selected);
+    const userMsg: AiMessage = { id: `u_translate_${now}`, role: "user", content: "请翻译这段引用。", references: [selected] };
+    const assistantMsg: AiMessage = { id: `a_translate_${now}`, role: "assistant", content: translated, references: [selected] };
+    setAiMessages((prev) => [...prev, userMsg, assistantMsg]);
+    hideSelectionPopover();
+    clearCurrentSelection();
+  };
+  const sendAiMessage = () => {
+    const raw = aiInput.trim();
+    const content = raw || (aiReferences.length ? "请基于引用内容进行解读。" : "");
+    if (!content) return;
+    const now = Date.now();
+    const refs = aiReferences.length ? aiReferences : undefined;
+    const userMsg: AiMessage = { id: `u_${now}`, role: "user", content, references: refs };
+    const assistantMsg: AiMessage = {
+      id: `a_${now}`,
+      role: "assistant",
+      content: refs
+        ? `已收到你的问题：“${content}”。我会重点结合你标记的 ${refs.length} 处引用进行回答，并补充下一步阅读建议。`
+        : `已收到你的问题：“${content}”。我会基于当前文章正文给出结构化解读与下一步阅读建议。`
+    };
+    setAiMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setAiInput("");
+    setAiReferences([]);
+  };
+
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (selectionPopoverRef.current?.contains(target)) return;
+      if (articleBodyRef.current?.contains(target)) return;
+      hideSelectionPopover();
+    };
+    const onResize = () => hideSelectionPopover();
+    const onScroll = () => hideSelectionPopover();
+    document.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, []);
 
   return (
     <Page
@@ -62,53 +179,150 @@ export function PostDetailPage() {
       {state.status === "error" ? <ErrorState error={state.error} onRetry={reload} /> : null}
 
       {post ? (
-        <Card>
-          <div className="pf-article">
-            <div className="pf-article__cover" />
-            <div className="pf-article__icon">{sourceMeta(post.source).icon}</div>
-            <h1 className="pf-article__title">{post.title}</h1>
-            <div className="pf-meta" style={{ marginTop: 10 }}>
-              <span className="pf-pill">{sourceMeta(post.source).label}</span>
-              <span className="pf-meta__dot" />
-              <span>{formatDateTime(post.publishedAt)}</span>
-              <span className="pf-meta__dot" />
-              <span>{readingTimeMinutes(post.content)} min read</span>
-              {post.lastViewedAt ? (
-                <>
-                  <span className="pf-meta__dot" />
-                  <span className="pf-muted2">last viewed {formatDateTime(post.lastViewedAt)}</span>
-                </>
+        <div className="pf-reading-layout">
+          <Card className="pf-reading-main">
+            <div className="pf-article">
+              <div className="pf-article__cover" />
+              <div className="pf-article__icon">{sourceMeta(post.source).icon}</div>
+              <h1 className="pf-article__title">{post.title}</h1>
+              <div className="pf-meta" style={{ marginTop: 10 }}>
+                <span className="pf-pill">{sourceMeta(post.source).label}</span>
+                <span className="pf-meta__dot" />
+                <span>{formatDateTime(post.publishedAt)}</span>
+                <span className="pf-meta__dot" />
+                <span>{readingTimeMinutes(post.content)} min read</span>
+                {post.lastViewedAt ? (
+                  <>
+                    <span className="pf-meta__dot" />
+                    <span className="pf-muted2">last viewed {formatDateTime(post.lastViewedAt)}</span>
+                  </>
+                ) : null}
+              </div>
+              {auth.state.status === "authenticated" ? (
+                <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+                  <Button
+                    onClick={async () => {
+                      if (auth.state.status !== "authenticated" || !post) return;
+                      try {
+                        if (favorited) {
+                          await apiUnfavoritePost(auth.state.accessToken, post.postId);
+                        } else {
+                          await apiFavoritePost(auth.state.accessToken, post.postId);
+                        }
+                        reload();
+                      } catch (e) {
+                        setSubmitError(e);
+                      }
+                    }}
+                    disabled={!canFavorite}
+                  >
+                    {favorited ? "取消收藏" : "收藏"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+                  <span className="pf-muted2">登录后可收藏与记录足迹</span>
+                </div>
+              )}
+              <div
+                ref={articleBodyRef}
+                className="pf-article-selectable"
+                onMouseUp={() => window.setTimeout(updateSelectionPopover, 0)}
+                onKeyUp={() => window.setTimeout(updateSelectionPopover, 0)}
+                onTouchEnd={() => window.setTimeout(updateSelectionPopover, 0)}
+              >
+                <RichText text={post.content} />
+              </div>
+              {paperMeta ? (
+                <div className="pf-paper-entry">
+                  <span className="pf-muted2">延伸阅读论文</span>
+                  <Link
+                    className="pf-paper-entry__link"
+                    to={`/papers/${encodeURIComponent(post.postId)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    打开 PDF：{paperMeta.title}
+                  </Link>
+                </div>
               ) : null}
             </div>
-            {auth.state.status === "authenticated" ? (
-              <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+          </Card>
+          <Card className="pf-ai-panel">
+            <div className="pf-ai-panel__head">
+              <div>
+                <h3>AI 对话</h3>
+                <div className="pf-muted2">基于当前文章内容辅助阅读</div>
+              </div>
+              <span className="pf-pill">Beta</span>
+            </div>
+            <div className="pf-ai-chatlog">
+              {aiMessages.map((msg) => (
+                <div key={msg.id} className={["pf-ai-chatmsg", msg.role === "user" ? "pf-ai-chatmsg--user" : "pf-ai-chatmsg--assistant"].join(" ")}>
+                  {msg.references?.length ? (
+                    <div className="pf-ai-msgrefs">
+                      {msg.references.map((ref) => (
+                        <span key={`${msg.id}_${ref}`} className="pf-ai-refchip">🔖 {clipReference(ref)}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {msg.content}
+                </div>
+              ))}
+            </div>
+            <div className="pf-ai-composer">
+              {aiReferences.length ? (
+                <div className="pf-ai-refdock">
+                  {aiReferences.map((ref) => (
+                    <span key={ref} className="pf-ai-refchip">
+                      🔖 {clipReference(ref)}
+                      <button
+                        type="button"
+                        className="pf-ai-refchip__remove"
+                        onClick={() => setAiReferences((prev) => prev.filter((it) => it !== ref))}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <textarea
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendAiMessage();
+                  }
+                }}
+                rows={3}
+                className="pf-textarea"
+                placeholder="向 AI 提问，或先在正文中选中内容后点“添加到对话”"
+              />
+              <div className="pf-row" style={{ justifyContent: "space-between" }}>
+                <span className="pf-muted2">Shift+Enter 换行</span>
                 <Button
-                  onClick={async () => {
-                    if (auth.state.status !== "authenticated" || !post) return;
-                    try {
-                      if (favorited) {
-                        await apiUnfavoritePost(auth.state.accessToken, post.postId);
-                      } else {
-                        await apiFavoritePost(auth.state.accessToken, post.postId);
-                      }
-                      reload();
-                    } catch (e) {
-                      setSubmitError(e);
-                    }
-                  }}
-                  disabled={!canFavorite}
+                  variant="primary"
+                  onClick={sendAiMessage}
+                  disabled={!aiInput.trim() && aiReferences.length === 0}
                 >
-                  {favorited ? "取消收藏" : "收藏"}
+                  发送
                 </Button>
               </div>
-            ) : (
-              <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-                <span className="pf-muted2">登录后可收藏与记录足迹</span>
-              </div>
-            )}
-            <RichText text={post.content} />
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+      {selectionPopover ? (
+        <div ref={selectionPopoverRef} className="pf-selection-popover" style={{ left: selectionPopover.left, top: selectionPopover.top }}>
+          <Button className="pf-selection-popover__btn" onClick={appendSelectionToReferences}>
+            🔖 添加到对话
+          </Button>
+          <Button className="pf-selection-popover__btn" variant="primary" onClick={translateSelectionToChat}>
+            🌐 翻译
+          </Button>
+        </div>
       ) : null}
 
       <Card>

@@ -8,6 +8,8 @@ import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { FootprintsPage } from "./pages/FootprintsPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { PaperPdfReaderPage } from "./pages/PaperPdfReaderPage";
+import { PathfinderPage } from "./pages/PathfinderPage";
 import { useAuth } from "./auth/AuthContext";
 import { TopNav } from "./layout/TopNav";
 import { NotFoundPage } from "./layout/NotFoundPage";
@@ -26,7 +28,9 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/posts" element={<PostsPage />} />
             <Route path="/posts/:postId" element={<PostDetailPage />} />
+            <Route path="/papers/:postId" element={<PaperPdfReaderPage />} />
             <Route path="/viz" element={<VisualizationPage />} />
+            <Route path="/pathfinder" element={<PathfinderPage />} />
             <Route
               path="/me"
               element={

@@ -19,11 +19,12 @@ public class TokenService {
     this.props = props;
   }
 
-  public String mintAccessToken(String userId, List<String> roles) {
+  public String mintAccessToken(String userId, String email, List<String> roles) {
     Instant now = Instant.now();
     Instant exp = now.plusSeconds(props.getAccessTokenTtlSeconds());
     return Jwts.builder()
         .subject(userId)
+        .claim("email", email)
         .claim("roles", roles)
         .id(UUID.randomUUID().toString())
         .issuedAt(Date.from(now))
@@ -42,4 +43,3 @@ public class TokenService {
     return Keys.hmacShaKeyFor(bytes);
   }
 }
-

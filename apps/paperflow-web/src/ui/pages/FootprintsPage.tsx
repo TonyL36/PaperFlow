@@ -13,7 +13,8 @@ export function FootprintsPage() {
   if (auth.state.status !== "authenticated") {
     return <Navigate to="/login" replace />;
   }
-  const { state, reload } = useAsyncData((signal) => apiListFootprints(1, 50, auth.state.accessToken, signal), [auth.state.accessToken]);
+  const accessToken = auth.state.accessToken;
+  const { state, reload } = useAsyncData((signal) => apiListFootprints(1, 50, accessToken, signal), [accessToken]);
   const items = state.data?.items ?? [];
 
   return (
@@ -44,4 +45,3 @@ export function FootprintsPage() {
     </Page>
   );
 }
-

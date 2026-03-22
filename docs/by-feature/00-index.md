@@ -37,13 +37,19 @@
 - 19 本地启动与可配置项脚本： [19-local-dev-scripts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/19-local-dev-scripts.md)
 - 20 项目开发要求总览： [20-project-dev-requirements-overview.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-dev-requirements-overview.md)
 - 21 后端数据库设计说明： [21-backend-database-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-backend-database-design.md)
+- 23 后端 Pathfinder 模型密钥配置： [23-backend-pathfinder-model-key.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/23-backend-pathfinder-model-key.md)
+- 24 数据库总览与更新操作（H2/PostgreSQL、Flyway/备份/发布）： [24-database-overview-and-ops.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/24-database-overview-and-ops.md)
 
 ## 5. 前端（paperflow-web）
 
 - 13 前端 SPA（Notion 风格 + /paperflow 子路径 + 双模式）： [13-frontend-spa.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/13-frontend-spa.md)
 - 16 阅读体验升级（Feed/Detail/块级正文/错误兜底）： [16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)
+<<<<<<< HEAD
 
 ## 6. 项目定义与需求
 
 - 20 项目需求、任务与方法定义： [20-project-requirements-and-methods.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-requirements-and-methods.md)
 - 21 PaperFlow 知识库数据库： [21-paperflow-knowledge-database.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-paperflow-knowledge-database.md)
+=======
+- 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径闯关）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
+>>>>>>> a4d7ac0 (feat: 完成Pathfinder与认证体验优化并补全文档)

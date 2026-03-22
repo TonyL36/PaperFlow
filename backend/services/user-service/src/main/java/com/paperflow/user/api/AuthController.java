@@ -75,6 +75,7 @@ public class AuthController {
     }
     String code = genCode();
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    boolean exposeDebugCode = isInMemoryH2() || !mail.isEnabled();
     VerificationEntity v = new VerificationEntity();
     v.setId("ver_" + UUID.randomUUID().toString().replace("-", ""));
     v.setType("EMAIL_REGISTER");
@@ -85,19 +86,30 @@ public class AuthController {
     verifications.save(v);
     if (mail.isEnabled()) {
       if (!mail.isConfigured()) {
-        throw new AuthService.ServiceException("SYS_MAIL_NOT_CONFIGURED", "Mail not configured");
-      }
-      try {
-        mail.sendVerificationCode(email, "注册", code);
-        data.put("delivery", "EMAIL");
-      } catch (MailException e) {
-        throw new AuthService.ServiceException("SYS_EMAIL_SEND_FAILED", "Failed to send email");
+        if (isAnyH2()) {
+          data.put("delivery", "DEBUG_FALLBACK");
+          exposeDebugCode = true;
+        } else {
+          throw new AuthService.ServiceException("SYS_MAIL_NOT_CONFIGURED", "Mail not configured");
+        }
+      } else {
+        try {
+          mail.sendVerificationCode(email, "注册", code);
+          data.put("delivery", "EMAIL");
+        } catch (MailException e) {
+          if (isAnyH2()) {
+            data.put("delivery", "DEBUG_FALLBACK");
+            exposeDebugCode = true;
+          } else {
+            throw new AuthService.ServiceException("SYS_EMAIL_SEND_FAILED", "Failed to send email");
+          }
+        }
       }
     } else {
       data.put("delivery", "DISABLED");
     }
     data.put("expiresAt", v.getExpiresAt());
-    if (isInMemoryH2() || !mail.isEnabled()) {
+    if (exposeDebugCode) {
       data.put("debugCode", code);
     }
     return ResponseEntity.ok(Envelope.ok(safeRequestId(requestId), data, List.of()));
@@ -205,6 +217,7 @@ public class AuthController {
     if (!email.isBlank() && users.findByEmail(email).isPresent()) {
       String code = genCode();
       OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+      boolean exposeDebugCode = isInMemoryH2() || !mail.isEnabled();
       VerificationEntity v = new VerificationEntity();
       v.setId("ver_" + UUID.randomUUID().toString().replace("-", ""));
       v.setType("PASSWORD_RESET");
@@ -215,19 +228,30 @@ public class AuthController {
       verifications.save(v);
       if (mail.isEnabled()) {
         if (!mail.isConfigured()) {
-          throw new AuthService.ServiceException("SYS_MAIL_NOT_CONFIGURED", "Mail not configured");
-        }
-        try {
-          mail.sendVerificationCode(email, "找回密码", code);
-          data.put("delivery", "EMAIL");
-        } catch (MailException e) {
-          throw new AuthService.ServiceException("SYS_EMAIL_SEND_FAILED", "Failed to send email");
+          if (isAnyH2()) {
+            data.put("delivery", "DEBUG_FALLBACK");
+            exposeDebugCode = true;
+          } else {
+            throw new AuthService.ServiceException("SYS_MAIL_NOT_CONFIGURED", "Mail not configured");
+          }
+        } else {
+          try {
+            mail.sendVerificationCode(email, "找回密码", code);
+            data.put("delivery", "EMAIL");
+          } catch (MailException e) {
+            if (isAnyH2()) {
+              data.put("delivery", "DEBUG_FALLBACK");
+              exposeDebugCode = true;
+            } else {
+              throw new AuthService.ServiceException("SYS_EMAIL_SEND_FAILED", "Failed to send email");
+            }
+          }
         }
       } else {
         data.put("delivery", "DISABLED");
       }
       data.put("expiresAt", v.getExpiresAt());
-      if (isInMemoryH2() || !mail.isEnabled()) {
+      if (exposeDebugCode) {
         data.put("debugCode", code);
       }
     }
@@ -307,5 +331,10 @@ public class AuthController {
   private boolean isInMemoryH2() {
     String url = env.getProperty("spring.datasource.url", "");
     return url != null && url.contains("jdbc:h2:mem:");
+  }
+
+  private boolean isAnyH2() {
+    String url = env.getProperty("spring.datasource.url", "");
+    return url != null && url.contains("jdbc:h2:");
   }
 }

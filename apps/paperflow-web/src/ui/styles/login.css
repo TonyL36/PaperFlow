@@ -255,3 +255,46 @@
   text-align: center;
   line-height: 1.5;
 }
+
+.pf-login-modal-mask{
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 24, 24, 0.22);
+  display: grid;
+  place-items: center;
+  z-index: 999;
+}
+
+.pf-login-modal{
+  width: 460px;
+  padding: 26px 24px 22px;
+  background-color: #ecf0f3;
+  border-radius: 14px;
+  box-shadow: 10px 10px 20px #d1d9e6, -10px -10px 20px #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pf-login-modal-title{
+  margin: 0;
+  color: #181818;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.pf-login-modal .pf-login-span{
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.pf-login-modal .pf-login-link{
+  margin-top: 12px;
+}
+
+.pf-login-modal .pf-login-button{
+  margin-top: 14px;
+  width: 148px;
+  height: 44px;
+  border-radius: 22px;
+}

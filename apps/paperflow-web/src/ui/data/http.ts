@@ -11,6 +11,8 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT_MS = 8000;
+
 export async function httpJson<T>(
   input: string,
   init: RequestInit & { accessToken?: string; requestId?: string } = {}
@@ -27,7 +29,25 @@ export async function httpJson<T>(
     headers.set("X-Request-Id", init.requestId);
   }
 
-  const resp = await fetch(input, { ...init, headers });
+  const timeout = resolveTimeoutMs(input, init.method);
+  const timeoutController = new AbortController();
+  const signals = [timeoutController.signal];
+  if (init.signal) {
+    signals.push(init.signal);
+  }
+  const signal = mergeAbortSignals(signals);
+  const timer = setTimeout(() => timeoutController.abort(), timeout);
+  let resp: Response;
+  try {
+    resp = await fetch(input, { ...init, headers, signal });
+  } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      throw new ApiError(`请求超时（>${timeout}ms）`, "SYS_TIMEOUT", "");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   const text = await resp.text();
   let body: Envelope<T> | null = null;
   try {
@@ -53,6 +73,33 @@ export async function httpJson<T>(
     return body.data;
   }
   throw new ApiError("Invalid response envelope", "SYS_INVALID_ENVELOPE", resp.headers.get("X-Request-Id") || "");
+}
+
+function resolveTimeoutMs(input: string, method?: string) {
+  const m = (method || "GET").toUpperCase();
+  if (input.includes("/api/v1/pathfinder/sessions/plan")) {
+    return 12000;
+  }
+  if (m === "GET") {
+    return DEFAULT_TIMEOUT_MS;
+  }
+  return 10000;
+}
+
+function mergeAbortSignals(signals: AbortSignal[]) {
+  if (signals.length === 1) {
+    return signals[0];
+  }
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      return controller.signal;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  }
+  return controller.signal;
 }
 
 function isErr<T>(e: Envelope<T>): e is EnvelopeErr {

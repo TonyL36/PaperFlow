@@ -75,6 +75,7 @@ public final class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         return writer.writeError(exchange, HttpStatus.UNAUTHORIZED, "AUTH_INVALID_TOKEN", "Invalid token", Map.of());
       }
       exchange.getAttributes().put(RateLimitGlobalFilter.ATTR_USER_ID, userId);
+      String email = claims.get("email", String.class);
 
       Object roles = claims.get("roles");
       String rolesStr = roles instanceof List<?> l ? l.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("") : String.valueOf(roles);
@@ -84,6 +85,9 @@ public final class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             h.set("X-User-Id", userId);
             if (rolesStr != null && !rolesStr.isBlank() && !"null".equals(rolesStr)) {
               h.set("X-User-Roles", rolesStr);
+            }
+            if (email != null && !email.isBlank()) {
+              h.set("X-User-Email", email);
             }
           })
           .build();

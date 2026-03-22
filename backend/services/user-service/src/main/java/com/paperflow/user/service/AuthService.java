@@ -103,7 +103,7 @@ public class AuthService {
 
   private Tokens issueTokens(UserEntity u) {
     List<String> roles = List.of(u.getRoles().split(","));
-    String access = tokenService.mintAccessToken(u.getId(), roles);
+    String access = tokenService.mintAccessToken(u.getId(), u.getEmail(), roles);
     String refreshRaw = mintRefreshTokenRaw();
     String hash = Hashing.sha256Hex(refreshRaw);
 

@@ -17,6 +17,9 @@ export function TopNav() {
         <NavLink to="/viz" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
           🧭 Viz
         </NavLink>
+        <NavLink to="/pathfinder" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
+          🗺️ Pathfinder
+        </NavLink>
         {auth.state.status === "authenticated" ? (
           <>
             <NavLink

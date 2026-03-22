@@ -37,6 +37,10 @@ spring:
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/v1/favorites,/api/v1/footprints,/api/v1/posts/*/favorite
+        - id: content-pathfinder
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/pathfinder/sessions,/api/v1/pathfinder/sessions/**
         - id: content-admin
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
@@ -53,7 +57,9 @@ paperflow:
     jwtSecret: ${PF_JWT_SECRET:change-me-in-dev-change-me-in-dev-change-me}
     accessTokenTtlSeconds: ${PF_ACCESS_TTL:900}
   rate-limit:
-    anonymousPerMinute: ${PF_RL_ANON_PER_MIN:10}
+    anonymousPerMinute: ${PF_RL_ANON_PER_MIN:30}
+    authPerMinute: ${PF_RL_AUTH_PER_MIN:120}
+    publicGetPerMinute: ${PF_RL_PUBLIC_PER_MIN:180}
     userPerMinute: ${PF_RL_USER_PER_MIN:120}
 
 management:
