@@ -1,0 +1,12 @@
+Collecting psycopg[binary]
+  Downloading psycopg-3.3.3-py3-none-any.whl.metadata (4.3 kB)
+Requirement already satisfied: typing-extensions>=4.6 in f:\paperflow\venv\lib\site-packages (from psycopg[binary]) (4.15.0)
+Requirement already satisfied: tzdata in f:\paperflow\venv\lib\site-packages (from psycopg[binary]) (2025.3)
+Collecting psycopg-binary==3.3.3 (from psycopg[binary])
+  Downloading psycopg_binary-3.3.3-cp311-cp311-win_amd64.whl.metadata (2.7 kB)
+Downloading psycopg_binary-3.3.3-cp311-cp311-win_amd64.whl (3.6 MB)
+   ---------------------------------------- 3.6/3.6 MB 1.4 MB/s eta 0:00:00
+Downloading psycopg-3.3.3-py3-none-any.whl (212 kB)
+   ---------------------------------------- 212.8/212.8 kB 6.3 MB/s eta 0:00:00
+Installing collected packages: psycopg-binary, psycopg
+Successfully installed psycopg-3.3.3 psycopg-binary-3.3.3

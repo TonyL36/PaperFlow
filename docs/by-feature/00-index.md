@@ -40,3 +40,8 @@
 
 - 13 前端 SPA（Notion 风格 + /paperflow 子路径 + 双模式）： [13-frontend-spa.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/13-frontend-spa.md)
 - 16 阅读体验升级（Feed/Detail/块级正文/错误兜底）： [16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)
+
+## 6. 项目定义与需求
+
+- 20 项目需求、任务与方法定义： [20-project-requirements-and-methods.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-requirements-and-methods.md)
+- 21 PaperFlow 知识库数据库： [21-paperflow-knowledge-database.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-paperflow-knowledge-database.md)

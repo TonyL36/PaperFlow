@@ -17,8 +17,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from shapely.geometry import box, Point
 
+from app.agents import (
+    AgentPdfQaRequest,
+    AgentPdfQaResponse,
+    FileCheckpointStore,
+    FiveAgentWorkflow,
+    WorkflowRequest,
+    WorkflowResponse,
+    tokenize,
+)
 from app.services.deepseek_client import DeepSeekClient
 from app.services.mineru_adapter import MinerUAdapter
+from app.services.paperflow_db import PaperflowDbConfig, PaperflowDbService
 
 load_dotenv()
 
@@ -26,10 +36,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 PARSE_DIR = DATA_DIR / "parsed"
+AGENT_RUN_DIR = DATA_DIR / "agent_runs"
 STATIC_DIR = BASE_DIR / "app" / "static"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 PARSE_DIR.mkdir(parents=True, exist_ok=True)
+AGENT_RUN_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="MinerU + DeepSeek 划词翻译 Demo", version="1.0.0")
 app.add_middleware(
@@ -48,6 +60,12 @@ deepseek_client = DeepSeekClient(
     api_key=os.getenv("DEEPSEEK_API_KEY", ""),
     model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
     base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+)
+paperflow_db = PaperflowDbService(PaperflowDbConfig.from_env())
+five_agent_workflow = FiveAgentWorkflow(
+    uploads_dir=UPLOAD_DIR,
+    checkpoint_store=FileCheckpointStore(AGENT_RUN_DIR),
+    db_service=paperflow_db,
 )
 ALLOW_CLIENT_API_KEY = os.getenv("ALLOW_CLIENT_API_KEY", "").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -286,8 +304,17 @@ async def process_pdf_task(task_id: str, pdf_path: str) -> None:
             result_path=str(result_path),
             meta={"block_count": len(blocks), **formula_debug},
         )
+        await paperflow_db.save_parsed_paper(
+            task_id=task_id,
+            filename=Path(pdf_path).name.split("_", 1)[1] if "_" in Path(pdf_path).name else Path(pdf_path).name,
+            upload_path=pdf_path,
+            blocks=blocks,
+            raw_data=raw_data,
+            parse_meta=formula_debug,
+        )
     except Exception as e:
         await update_task(task_id, status="failed", error=str(e))
+        await paperflow_db.mark_task_failed(task_id, str(e))
 
 
 @app.get("/")
@@ -319,6 +346,12 @@ async def upload_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(
     )
     async with tasks_lock:
         tasks[task_id] = record
+    await paperflow_db.upsert_upload_task(
+        task_id=task_id,
+        filename=filename,
+        upload_path=str(upload_path),
+        source="uploaded",
+    )
     background_tasks.add_task(process_pdf_task, task_id, str(upload_path))
     return {"task_id": task_id, "status": "queued"}
 
@@ -339,6 +372,24 @@ async def get_task(task_id: str) -> dict[str, Any]:
             "meta": task.meta,
             "result": task.result if task.status == "completed" else None,
         }
+
+
+@app.get("/api/papers")
+async def list_papers(limit: int = 20, offset: int = 0) -> dict[str, Any]:
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="limit 必须在 1 到 100 之间")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset 不能小于 0")
+    items = await paperflow_db.list_papers(limit=limit, offset=offset)
+    return {"items": items, "limit": limit, "offset": offset}
+
+
+@app.get("/api/papers/{paper_id}")
+async def get_paper(paper_id: str) -> dict[str, Any]:
+    paper = await paperflow_db.get_paper(paper_id)
+    if paper is None:
+        raise HTTPException(status_code=404, detail="论文不存在")
+    return paper
 
 
 @app.get("/api/pdf/{task_id}")
@@ -532,3 +583,48 @@ async def translate(req: TranslateRequest) -> dict[str, Any]:
         "latex": latex,
         "explanation": explanation,
     }
+
+
+@app.post("/api/agents/workflow", response_model=WorkflowResponse)
+async def run_five_agent_workflow(req: WorkflowRequest) -> WorkflowResponse:
+    return await five_agent_workflow.run(req)
+
+
+@app.get("/api/agents/runs/{run_id}")
+async def get_five_agent_run(run_id: str) -> dict[str, Any]:
+    state = five_agent_workflow.get_run(run_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="运行记录不存在")
+    return state.model_dump(mode="json")
+
+
+@app.post("/api/agents/sage/pdf-qa", response_model=AgentPdfQaResponse)
+async def answer_pdf_with_sage(req: AgentPdfQaRequest) -> AgentPdfQaResponse:
+    async with tasks_lock:
+        task = tasks.get(req.task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        if task.status != "completed" or not task.result:
+            raise HTTPException(status_code=400, detail="任务尚未解析完成")
+        blocks = task.result.get("blocks", [])
+
+    filtered_blocks = blocks
+    if req.page is not None:
+        filtered_blocks = [block for block in blocks if block.get("page") == req.page]
+    if req.selected_text.strip():
+        selected_tokens = set(tokenize(req.selected_text))
+        if selected_tokens:
+            boosted = []
+            for block in filtered_blocks:
+                block_tokens = set(tokenize(str(block.get("text", ""))))
+                if selected_tokens & block_tokens:
+                    boosted.append(block)
+            if boosted:
+                filtered_blocks = boosted
+
+    return five_agent_workflow.answer_pdf(
+        task_id=req.task_id,
+        question=req.question,
+        blocks=filtered_blocks,
+        top_k=req.top_k,
+    )
