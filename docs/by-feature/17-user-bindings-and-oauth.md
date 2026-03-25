@@ -55,9 +55,10 @@
 实际发送邮件：
 - 验证码邮件使用 Spring Mail；生产/联调时通过环境变量配置 `spring.mail.*` 与发件人
 - 关键环境变量：
-  - `PF_MAIL_ENABLED`（对应 kkbbs 的 `send.mail.open`）
+  - `PF_MAIL_ENABLED`
   - `PF_MAIL_HOST / PF_MAIL_PORT / PF_MAIL_USERNAME / PF_MAIL_PASSWORD`
   - `PF_MAIL_FROM`（可选，不填则默认用 `PF_MAIL_USERNAME`）
+- 管理端可按场景单独配置验证码模板（注册/找回密码/绑定邮箱），见 25 文档
 
 ## 17.5 QQ 绑定（OAuth mock + 回调）
 

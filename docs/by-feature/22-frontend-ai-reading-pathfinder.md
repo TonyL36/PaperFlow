@@ -1,120 +1,71 @@
-# 22 前端：AI 阅读 + Pathfinder（论文阅读 + 学习路径闯关）
+# 22 前端：AI 阅读 + Pathfinder（论文阅读 + 学习路径对话）
 
-本文聚焦两条前端 AI 体验链路：
+## 22.1 功能概览
 
-- 论文阅读页（左侧 PDF + 右侧 AI 对话）
-- Pathfinder 学习路径页（目标输入 → 阶段化闯关）
+当前前端已形成两条 AI 交互链路：
 
-目标是让“看论文”和“做学习计划”都从单页 CRUD 升级为可持续交互流程。
+- 论文阅读：左侧 PDF，右侧 AI 聊天
+- Pathfinder：三栏布局（左历史会话 / 中对话 / 右路径结果）
 
-## 22.1 功能目标与边界
+两条链路都支持“持续对话”，不再是一次请求一次静态结果。
 
-目标：
+## 22.2 论文阅读页（/papers/:postId）
 
-- 在文章详情页提供论文阅读入口，进入后可并排查看 PDF 与 AI 对话
-- 提供类 GPT 的目标输入体验，输出可执行的阶段路线（节点、阅读项、进度）
-- 前端状态在失败场景可恢复：生成失败有提示、同步失败不丢本地操作
-- 与后端接口契约保持一致，支持历史会话加载与收藏/取消收藏
+页面：`PaperPdfReaderPage`
 
-边界：
+关键行为：
 
-- 论文阅读页当前 AI 对话为前端演示态，不直接调用模型接口
-- Pathfinder 仅支持两种模型枚举（`glm-4-flash` / `glm-z1-flash`）
-- 当前不做多会话并发编辑冲突治理（以最后一次保存为准）
+- 通过 `resolvePaperPdf(postId)` 稳定映射 PDF
+- AI 聊天调用后端 `POST /api/v1/posts/{postId}/ai-chat`
+- 回复区支持 Markdown 渲染与打字机效果
 
-## 22.2 页面入口与路由编排
+说明：
 
-代码入口：
+- 论文页 AI 已不是前端本地演示文案
+- 登录态会携带 token，与详情页 AI 链路一致
 
-- 路由注册： [App.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/App.tsx#L27-L34)
-- 顶部导航： [TopNav.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/layout/TopNav.tsx#L14-L23)
+## 22.3 Pathfinder 页面（/pathfinder）
 
-关键点：
+页面：`PathfinderPage`
 
-- `/papers/:postId` 对应论文阅读页（`PaperPdfReaderPage`）
-- `/pathfinder` 对应学习路径页（`PathfinderPage`）
-- Pathfinder 入口在主导航常驻，方便从 Feed/Viz 快速切换到学习规划
+### 布局
 
-## 22.3 论文阅读页：PDF + AI 双栏
+- 左栏：历史会话（最近 20 条）
+- 中栏：主对话区（目标输入、连续提问、修改计划）
+- 右栏：路径结果与阶段节点/阅读项
 
-代码位置： [PaperPdfReaderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PaperPdfReaderPage.tsx)
+### 新会话与连续修改
 
-核心结构（节选）：
+- 新增“新对话”按钮，点击后开始新的会话分界
+- 在已有会话下再次输入目标，会基于当前计划与近期对话生成“修改版计划”
+- 不再按“每次提问都新建会话”
 
-```tsx
-<div className="pf-pdf-layout">
-  <Card className="pf-pdf-main">
-    <iframe title={paperMeta.title} src={paperMeta.pdfUrl} className="pf-pdf-frame" />
-  </Card>
-  <Card className="pf-ai-panel">
-    <div className="pf-ai-chatlog">{/* 对话历史 */}</div>
-    <div className="pf-ai-composer">{/* 输入框 + 发送按钮 */}</div>
-  </Card>
-</div>
-```
+### 历史加载策略
 
-实现说明：
+- 仅当 URL 携带 `sid` 时自动回填对应会话
+- 无 `sid` 时保留欢迎态，避免默认抢占最近会话
 
-- `apiGetPost` 只用于补充“来源文章”信息，不阻塞 PDF 渲染主链路
-- `resolvePaperPdf(postId)` 通过 `postId` 稳定映射论文库，保证同一文章重复进入时目标 PDF 一致  
-  参考 [paper.ts](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/utils/paper.ts#L3-L16)
-- 对话发送逻辑当前在前端本地生成“结构化回应文案”，用于演示交互节奏
+## 22.4 前后端契约
 
-## 22.4 Pathfinder：目标生成、进度推进、历史回放
+Pathfinder：
 
-代码位置： [PathfinderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PathfinderPage.tsx)
+- `POST /api/v1/pathfinder/sessions/plan`
+- `PUT /api/v1/pathfinder/sessions/{sessionId}`
+- `GET /api/v1/pathfinder/sessions`
+- `POST/DELETE /api/v1/pathfinder/sessions/{sessionId}/favorite`
 
-### 1) 生成链路
+阅读 AI：
 
-- 用户输入目标并选择模型后，调用 `apiGeneratePathfinderPlan`
-- 成功后生成 `nextPlan`、选中当前关卡、追加 assistant 消息并持久化
-- 失败时清理当前 plan，写入失败提示消息，避免界面卡死
+- `POST /api/v1/posts/{postId}/ai-chat`
 
-对应代码： [PathfinderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PathfinderPage.tsx#L179-L224)
+## 22.5 交互与体验要点
 
-### 2) 关卡状态机
+- AI 回复支持 Markdown（标题、列表、引用、代码块、链接）
+- AI 消息以逐字动画呈现，符合聊天式反馈节奏
+- 错误态保留对话上下文，便于用户继续追问或重试
 
-- 前端统一用 `recalculateStageStatus` 重算阶段状态
-- 规则：前置未完成则后续 `locked`；当前未全完成阶段为 `in_progress`
-- 通过 `pickCurrentStageId` 保证刷新/切换后有稳定焦点关卡
+## 22.6 常见排查
 
-对应代码： [PathfinderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PathfinderPage.tsx#L521-L550)
-
-### 3) 会话持久化与历史
-
-- 初次进入读取 `apiListPathfinderSessions`，默认回填最近会话
-- 任意关卡切换、阅读项打勾、收藏状态变更都会触发持久化
-- `saveError` 只提示“同步失败”，不回滚本地状态，优先保证使用连续性
-
-对应代码：
-
-- 历史加载： [PathfinderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PathfinderPage.tsx#L91-L124)
-- 持久化： [PathfinderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PathfinderPage.tsx#L155-L177)
-- 收藏切换： [PathfinderPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PathfinderPage.tsx#L278-L293)
-
-## 22.5 前后端契约（前端视角）
-
-接口封装： [api.ts](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/data/api.ts#L136-L207)  
-类型定义： [types.ts](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/data/types.ts#L62-L98)
-
-关键契约：
-
-- 生成路径：`POST /api/v1/pathfinder/sessions/plan`
-- 会话保存：`PUT /api/v1/pathfinder/sessions/{sessionId}`
-- 会话列表：`GET /api/v1/pathfinder/sessions`
-- 收藏切换：`POST/DELETE /api/v1/pathfinder/sessions/{sessionId}/favorite`
-
-## 22.6 常见坑与排查
-
-- 现象：Pathfinder 一直提示“请先登录”  
-  排查：确认 `AuthContext` 状态为 authenticated，且请求头携带 Bearer Token
-- 现象：刷新后 stage 定位错乱  
-  排查：检查 URL 查询参数 `sid/stage` 是否存在且在当前会话内有效
-- 现象：历史会话加载失败  
-  排查：优先看错误面板中的 `requestId`，再到网关/内容服务日志关联定位
-
-## 22.7 演进方向
-
-- 论文阅读页 AI 对话改为真实后端代理调用（统一鉴权、审计与限流）
-- Pathfinder 增加“重生成当前关卡”“插入自定义阅读项”“阶段备注”能力
-- 在历史会话区增加筛选维度（收藏优先、最近模型、目标关键词）
+- Pathfinder 超时：前端 `plan` 超时已调到 30000ms，仍超时需看后端模型调用日志
+- 历史会话空：确认已登录且有会话数据，再检查 `sid` 是否有效
+- Markdown 显示异常：优先检查回复是否被三引号包裹且格式合法

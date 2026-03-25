@@ -18,7 +18,8 @@
 
 - 05 注册/登录/刷新/注销： [05-user-auth.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/05-user-auth.md)
 - 06 获取/更新个人资料： [06-user-profile.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/06-user-profile.md)
-- 17 资料、绑定与 OAuth（Email/Phone/QQ）： [17-user-bindings-and-oauth.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/17-user-bindings-and-oauth.md)
+- 17 资料、绑定与 OAuth（Email/Phone/QQ/WeChat）： [17-user-bindings-and-oauth.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/17-user-bindings-and-oauth.md)
+- 25 用户管理与邮件模板设置（Admin）： [25-admin-user-and-mail-templates.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/25-admin-user-and-mail-templates.md)
 
 ## 3. 内容服务（content-service）
 
@@ -45,6 +46,7 @@
 - 13 前端 SPA（Notion 风格 + /paperflow 子路径 + 双模式）： [13-frontend-spa.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/13-frontend-spa.md)
 - 16 阅读体验升级（Feed/Detail/块级正文/错误兜底）： [16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 ## 6. 项目定义与需求
 
@@ -53,3 +55,6 @@
 =======
 - 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径闯关）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
 >>>>>>> a4d7ac0 (feat: 完成Pathfinder与认证体验优化并补全文档)
+=======
+- 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径对话）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
+>>>>>>> 0acc366 (docs: add admin mail templates section; update profile, pathfinder, moderation and bindings docs; refresh index)

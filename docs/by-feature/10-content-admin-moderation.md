@@ -100,4 +100,4 @@ public class AdminController {
 
 - 更严格的权限模型：把角色/权限迁移到用户服务并由网关统一鉴权策略控制
 - 审核审计：记录审核人、审核时间、原因（合规需求）
-- 管理端 UI：React 增加 `/admin/comments` 页面（列表 + 快捷审核按钮）
+- 已有管理端 UI：`/admin/comments` 页面已上线，后续可增加批量审核与关键词筛选
