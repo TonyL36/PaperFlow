@@ -17,7 +17,7 @@
 
 `/users/me` 当前返回：
 
-- `id / email / displayName / roles`
+- `userId / email / displayName / roles`
 - `status`
 - `avatarUrl / bio / phone`
 - `emailVerified / phoneVerified / qqBound`

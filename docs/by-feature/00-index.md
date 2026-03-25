@@ -45,16 +45,10 @@
 
 - 13 前端 SPA（Notion 风格 + /paperflow 子路径 + 双模式）： [13-frontend-spa.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/13-frontend-spa.md)
 - 16 阅读体验升级（Feed/Detail/块级正文/错误兜底）： [16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)
-<<<<<<< HEAD
-<<<<<<< HEAD
+- 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径对话）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
 
 ## 6. 项目定义与需求
 
 - 20 项目需求、任务与方法定义： [20-project-requirements-and-methods.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-requirements-and-methods.md)
 - 21 PaperFlow 知识库数据库： [21-paperflow-knowledge-database.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-paperflow-knowledge-database.md)
-=======
-- 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径闯关）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
->>>>>>> a4d7ac0 (feat: 完成Pathfinder与认证体验优化并补全文档)
-=======
-- 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径对话）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
->>>>>>> 0acc366 (docs: add admin mail templates section; update profile, pathfinder, moderation and bindings docs; refresh index)
+- 26 复盘：Gitee 不及时提交的后果与改进： [2026-03-25-gitee-untimely-commit-retrospective.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/daily/%E7%95%AA%E5%A4%96/2026-03-25-gitee-untimely-commit-retrospective.md)

@@ -29,7 +29,7 @@
 
 - `GET /api/v1/admin/users`
 - `PATCH /api/v1/admin/users/{userId}`（更新 `status`）
-- `POST /api/v1/admin/users/{userId}/tokens/revoke`（使 token 失效）
+- `POST /api/v1/admin/users/{userId}/revoke-tokens`（使 token 失效）
 
 权限模型：
 
@@ -77,4 +77,3 @@
 - 若管理页更新模板后无效果，先确认当前环境 `PF_MAIL_ENABLED=true`
 - 若启动报 Flyway checksum mismatch，不要修改已执行版本，新增更高版本迁移
 - 模板文本建议保留占位符，避免发出无验证码的无效邮件
-
