@@ -17,6 +17,7 @@ export type Post = {
   content: string;
   source: string;
   publishedAt: string;
+  commentModerationEnabled?: boolean | null;
   favorited?: boolean | null;
   lastViewedAt?: string | null;
 };
@@ -57,6 +58,14 @@ export type UserProfile = {
   emailVerified: boolean;
   phoneVerified: boolean;
   qqBound: boolean;
+};
+
+export type MailTemplateSettings = {
+  type: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  placeholders: string[];
+  updatedAt?: string | null;
 };
 
 export type PathfinderMessage = {

@@ -3,8 +3,11 @@ package com.paperflow.content.api;
 import com.paperflow.content.api.Envelope.Link;
 import com.paperflow.content.api.dto.CommentResponse;
 import com.paperflow.content.api.dto.UpdateCommentStatusRequest;
+import com.paperflow.content.api.dto.UpdatePostCommentModerationRequest;
 import com.paperflow.content.domain.CommentEntity;
+import com.paperflow.content.domain.PostEntity;
 import com.paperflow.content.repo.CommentRepository;
+import com.paperflow.content.repo.PostRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
@@ -23,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin")
 public class AdminController {
   private final CommentRepository comments;
+  private final PostRepository posts;
 
-  public AdminController(CommentRepository comments) {
+  public AdminController(CommentRepository comments, PostRepository posts) {
     this.comments = comments;
+    this.posts = posts;
   }
 
   @GetMapping("/comments")
@@ -72,6 +77,32 @@ public class AdminController {
         safeRequestId(requestId),
         toDto(c),
         List.of(new Link("self", "/api/v1/admin/comments/" + commentId, Optional.of("PATCH"), Optional.empty()))
+    ));
+  }
+
+  @PatchMapping("/posts/{postId}/comment-moderation")
+  public ResponseEntity<Envelope<Object>> updatePostCommentModeration(
+      @RequestHeader(value = "X-Request-Id", required = false) String requestId,
+      @RequestHeader(value = "X-User-Roles", required = false) String roles,
+      @PathVariable("postId") String postId,
+      @Valid @RequestBody UpdatePostCommentModerationRequest req
+  ) {
+    if (!isAdmin(roles)) {
+      return ResponseEntity.status(403).body(Envelope.err(safeRequestId(requestId), "AUTH_FORBIDDEN", "Admin required", java.util.Map.of()));
+    }
+    PostEntity post = posts.findById(postId).orElse(null);
+    if (post == null) {
+      return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "Post not found", java.util.Map.of()));
+    }
+    post.setCommentModerationEnabled(req.commentModerationEnabled());
+    posts.save(post);
+    var data = new java.util.LinkedHashMap<String, Object>();
+    data.put("postId", post.getId());
+    data.put("commentModerationEnabled", post.getCommentModerationEnabled());
+    return ResponseEntity.ok(Envelope.ok(
+        safeRequestId(requestId),
+        data,
+        List.of(new Link("self", "/api/v1/admin/posts/" + postId + "/comment-moderation", Optional.of("PATCH"), Optional.empty()))
     ));
   }
 

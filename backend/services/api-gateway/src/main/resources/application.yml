@@ -16,7 +16,7 @@ spring:
         - id: user-users
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/v1/users/**
+            - Path=/api/v1/users/**,/api/v1/public/users/**
         - id: user-oauth
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
@@ -24,7 +24,7 @@ spring:
         - id: user-admin
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/v1/admin/users,/api/v1/admin/users/**
+            - Path=/api/v1/admin/users,/api/v1/admin/users/**,/api/v1/admin/settings/mail-templates/**,/api/v1/admin/settings/mail-templates
         - id: content-posts
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
@@ -44,7 +44,7 @@ spring:
         - id: content-admin
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/v1/admin/comments,/api/v1/admin/comments/**
+            - Path=/api/v1/admin/comments,/api/v1/admin/comments/**,/api/v1/admin/posts,/api/v1/admin/posts/**
         - id: agents-out-of-scope
           uri: ${AGENT_SERVICE_URL:http://localhost:8090}
           predicates:

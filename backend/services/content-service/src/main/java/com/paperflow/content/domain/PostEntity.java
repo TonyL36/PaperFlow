@@ -3,6 +3,7 @@ package com.paperflow.content.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
@@ -27,6 +28,9 @@ public class PostEntity {
 
   @Column(name = "author_user_id", length = 64)
   private String authorUserId;
+
+  @Column(name = "comment_moderation_enabled", nullable = false)
+  private Boolean commentModerationEnabled;
 
   public String getId() {
     return id;
@@ -74,5 +78,20 @@ public class PostEntity {
 
   public void setAuthorUserId(String authorUserId) {
     this.authorUserId = authorUserId;
+  }
+
+  public Boolean getCommentModerationEnabled() {
+    return commentModerationEnabled;
+  }
+
+  public void setCommentModerationEnabled(Boolean commentModerationEnabled) {
+    this.commentModerationEnabled = commentModerationEnabled;
+  }
+
+  @PrePersist
+  public void prePersist() {
+    if (commentModerationEnabled == null) {
+      commentModerationEnabled = true;
+    }
   }
 }

@@ -4,7 +4,9 @@ import { PostsPage } from "./pages/PostsPage";
 import { PostDetailPage } from "./pages/PostDetailPage";
 import { VisualizationPage } from "./pages/VisualizationPage";
 import { AdminCommentsPage } from "./pages/AdminCommentsPage";
+import { AdminPostModerationPage } from "./pages/AdminPostModerationPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { AdminMailSettingsPage } from "./pages/AdminMailSettingsPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { FootprintsPage } from "./pages/FootprintsPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -18,10 +20,11 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary";
 export function App() {
   const loc = useLocation();
   const isLogin = loc.pathname === "/login";
+  const isWidePage = loc.pathname.startsWith("/pathfinder");
   return (
     <div className="pf-app">
       {isLogin ? null : <TopNav />}
-      <div className={isLogin ? undefined : "pf-container"}>
+      <div className={isLogin ? undefined : ["pf-container", isWidePage ? "pf-container--wide" : null].filter(Boolean).join(" ")}>
         <AppErrorBoundary>
           <Routes>
             <Route path="/" element={<Navigate to="/posts" replace />} />
@@ -64,10 +67,26 @@ export function App() {
               }
             />
             <Route
+              path="/admin/posts/moderation"
+              element={
+                <RequireAdmin>
+                  <AdminPostModerationPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
               path="/admin/users"
               element={
                 <RequireAdmin>
                   <AdminUsersPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/settings/mail"
+              element={
+                <RequireAdmin>
+                  <AdminMailSettingsPage />
                 </RequireAdmin>
               }
             />

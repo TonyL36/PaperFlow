@@ -23,12 +23,6 @@ export function TopNav() {
         {auth.state.status === "authenticated" ? (
           <>
             <NavLink
-              to="/me"
-              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
-            >
-              Profile
-            </NavLink>
-            <NavLink
               to="/favorites"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
@@ -54,15 +48,29 @@ export function TopNav() {
               to="/admin/comments"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              🛡️ Moderation
+              🛡️ Comment Review
+            </NavLink>
+            <NavLink
+              to="/admin/posts/moderation"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              🧩 Post Policy
+            </NavLink>
+            <NavLink
+              to="/admin/settings/mail"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              ✉️ Mail
             </NavLink>
           </>
         ) : null}
         <div className="pf-navspacer" />
         {auth.state.status === "authenticated" ? (
           <div className="pf-row">
-            {auth.state.avatarUrl ? <img src={auth.state.avatarUrl} alt="avatar" className="pf-avatar" /> : <div className="pf-avatar">{auth.state.displayName.slice(0, 1) || "U"}</div>}
-            <span className="pf-muted">{auth.state.displayName}</span>
+            <Link to="/me" className="pf-nav-profile">
+              {auth.state.avatarUrl ? <img src={auth.state.avatarUrl} alt="avatar" className="pf-avatar" /> : <div className="pf-avatar">{auth.state.displayName.slice(0, 1) || "U"}</div>}
+              <span className="pf-muted">{auth.state.displayName}</span>
+            </Link>
             <Button
               onClick={() => {
                 void auth.logout();

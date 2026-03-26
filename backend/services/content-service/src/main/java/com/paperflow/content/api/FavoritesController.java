@@ -89,10 +89,12 @@ public class FavoritesController {
         .filter(java.util.Objects::nonNull)
         .map(p -> toDto(p, true, null))
         .toList();
+    long totalItems = favorites.countByIdUserId(userId);
+    long totalPages = totalItems == 0 ? 0 : (long) Math.ceil((double) totalItems / ps);
 
     var data = new java.util.LinkedHashMap<String, Object>();
     data.put("items", items);
-    data.put("page", java.util.Map.of("number", pn, "size", ps));
+    data.put("page", java.util.Map.of("number", pn, "size", ps, "totalItems", totalItems, "totalPages", totalPages));
     return ResponseEntity.ok(Envelope.ok(
         safeRequestId(requestId),
         data,
@@ -116,10 +118,12 @@ public class FavoritesController {
         .map(fp -> toDto(fp.getPost(), null, fp.getLastViewedAt()))
         .filter(java.util.Objects::nonNull)
         .toList();
+    long totalItems = footprints.countByIdUserId(userId);
+    long totalPages = totalItems == 0 ? 0 : (long) Math.ceil((double) totalItems / ps);
 
     var data = new java.util.LinkedHashMap<String, Object>();
     data.put("items", items);
-    data.put("page", java.util.Map.of("number", pn, "size", ps));
+    data.put("page", java.util.Map.of("number", pn, "size", ps, "totalItems", totalItems, "totalPages", totalPages));
     return ResponseEntity.ok(Envelope.ok(
         safeRequestId(requestId),
         data,
@@ -131,7 +135,7 @@ public class FavoritesController {
     if (p == null) {
       return null;
     }
-    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), favorited, lastViewedAt);
+    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), favorited, lastViewedAt);
   }
 
   private String safeRequestId(String requestId) {

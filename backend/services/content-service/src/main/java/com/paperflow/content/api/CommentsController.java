@@ -4,6 +4,7 @@ import com.paperflow.content.api.Envelope.Link;
 import com.paperflow.content.api.dto.CommentResponse;
 import com.paperflow.content.api.dto.CreateCommentRequest;
 import com.paperflow.content.domain.CommentEntity;
+import com.paperflow.content.domain.PostEntity;
 import com.paperflow.content.repo.CommentRepository;
 import com.paperflow.content.repo.PostRepository;
 import jakarta.validation.Valid;
@@ -66,7 +67,8 @@ public class CommentsController {
     if (userId == null || userId.isBlank()) {
       return ResponseEntity.status(401).body(Envelope.err(safeRequestId(requestId), "AUTH_MISSING_TOKEN", "Missing user identity", java.util.Map.of()));
     }
-    if (!posts.existsById(req.postId())) {
+    PostEntity post = posts.findById(req.postId()).orElse(null);
+    if (post == null) {
       return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "Post not found", java.util.Map.of()));
     }
 
@@ -75,7 +77,7 @@ public class CommentsController {
     c.setPostId(req.postId());
     c.setUserId(userId);
     c.setContent(req.content());
-    c.setStatus("PENDING");
+    c.setStatus(Boolean.FALSE.equals(post.getCommentModerationEnabled()) ? "APPROVED" : "PENDING");
     c.setCreatedAt(OffsetDateTime.now());
     comments.save(c);
 
@@ -94,4 +96,3 @@ public class CommentsController {
     return requestId == null ? "" : requestId;
   }
 }
-

@@ -1,5 +1,5 @@
 import { httpJson } from "./http";
-import type { AdminUser, Comment, Paged, PathfinderModel, PathfinderSession, PathfinderStage, Post, UserProfile } from "./types";
+import type { AdminUser, Comment, MailTemplateSettings, Paged, PathfinderModel, PathfinderSession, PathfinderStage, Post, UserProfile } from "./types";
 
 type LoginReq = { email: string; password: string };
 type AuthResp = { accessToken: string };
@@ -43,12 +43,18 @@ export async function apiUpdateMyProfile(
   return httpJson<UserProfile>("/api/v1/users/me", { method: "PATCH", accessToken, body: JSON.stringify(patch) });
 }
 
+export async function apiUploadMyAvatar(accessToken: string, file: File): Promise<UserProfile> {
+  const form = new FormData();
+  form.set("file", file);
+  return httpJson<UserProfile>("/api/v1/users/me/avatar", { method: "POST", accessToken, body: form });
+}
+
 export async function apiListPosts(pageNumber: number, pageSize: number, signal?: AbortSignal): Promise<Paged<Post>> {
   return httpJson<Paged<Post>>(`/api/v1/posts?page[number]=${pageNumber}&page[size]=${pageSize}`, { method: "GET", signal });
 }
 
-export async function apiGetPost(postId: string, signal?: AbortSignal): Promise<Post> {
-  return httpJson<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`, { method: "GET", signal });
+export async function apiGetPost(postId: string, accessToken?: string, signal?: AbortSignal): Promise<Post> {
+  return httpJson<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`, { method: "GET", accessToken, signal });
 }
 
 export async function apiFavoritePost(accessToken: string, postId: string): Promise<void> {
@@ -103,6 +109,18 @@ export async function apiAdminUpdateCommentStatus(accessToken: string, commentId
   });
 }
 
+export async function apiAdminUpdatePostCommentModeration(
+  accessToken: string,
+  postId: string,
+  commentModerationEnabled: boolean
+): Promise<{ postId: string; commentModerationEnabled: boolean }> {
+  return httpJson<{ postId: string; commentModerationEnabled: boolean }>(`/api/v1/admin/posts/${encodeURIComponent(postId)}/comment-moderation`, {
+    method: "PATCH",
+    accessToken,
+    body: JSON.stringify({ commentModerationEnabled })
+  });
+}
+
 export async function apiAdminListUsers(
   accessToken: string,
   params: { q?: string; status?: string; role?: string; pageNumber: number; pageSize: number },
@@ -130,6 +148,35 @@ export async function apiAdminRevokeUserTokens(accessToken: string, userId: stri
     method: "POST",
     accessToken,
     body: JSON.stringify({})
+  });
+}
+
+export async function apiAdminListMailTemplateTypes(accessToken: string, signal?: AbortSignal): Promise<Record<string, string>> {
+  const data = await httpJson<{ items: Record<string, string> }>("/api/v1/admin/settings/mail-templates/types", {
+    method: "GET",
+    accessToken,
+    signal
+  });
+  return data.items ?? {};
+}
+
+export async function apiAdminGetMailTemplate(accessToken: string, templateType: string, signal?: AbortSignal): Promise<MailTemplateSettings> {
+  return httpJson<MailTemplateSettings>(`/api/v1/admin/settings/mail-templates/${encodeURIComponent(templateType)}`, {
+    method: "GET",
+    accessToken,
+    signal
+  });
+}
+
+export async function apiAdminUpdateMailTemplate(
+  accessToken: string,
+  templateType: string,
+  patch: { subjectTemplate: string; bodyTemplate: string }
+): Promise<MailTemplateSettings> {
+  return httpJson<MailTemplateSettings>(`/api/v1/admin/settings/mail-templates/${encodeURIComponent(templateType)}`, {
+    method: "PUT",
+    accessToken,
+    body: JSON.stringify(patch)
   });
 }
 

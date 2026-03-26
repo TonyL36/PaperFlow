@@ -86,7 +86,7 @@ public class AgentIngestController {
   }
 
   private PostResponse toDto(PostEntity p) {
-    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), null, null);
+    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), null, null);
   }
 
   private String safeRequestId(String requestId) {

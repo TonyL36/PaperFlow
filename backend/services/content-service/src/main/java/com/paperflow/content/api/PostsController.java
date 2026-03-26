@@ -88,11 +88,11 @@ public class PostsController {
   }
 
   private PostResponse toDto(PostEntity p) {
-    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), null, null);
+    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), null, null);
   }
 
   private PostResponse toDto(PostEntity p, Boolean favorited, OffsetDateTime lastViewedAt) {
-    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), favorited, lastViewedAt);
+    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), favorited, lastViewedAt);
   }
 
   private String safeRequestId(String requestId) {
