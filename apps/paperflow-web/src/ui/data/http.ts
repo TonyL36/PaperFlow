@@ -19,7 +19,7 @@ export async function httpJson<T>(
 ): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body && !headers.has("Content-Type")) {
+  if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   if (init.accessToken) {
@@ -78,7 +78,7 @@ export async function httpJson<T>(
 function resolveTimeoutMs(input: string, method?: string) {
   const m = (method || "GET").toUpperCase();
   if (input.includes("/api/v1/pathfinder/sessions/plan")) {
-    return 12000;
+    return 30000;
   }
   if (m === "GET") {
     return DEFAULT_TIMEOUT_MS;

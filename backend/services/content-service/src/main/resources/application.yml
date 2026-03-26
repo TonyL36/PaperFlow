@@ -25,7 +25,7 @@ paperflow:
       endpoint: ${PF_PATHFINDER_AI_ENDPOINT:https://open.bigmodel.cn/api/paas/v4/chat/completions}
       apiKey: ${PF_PATHFINDER_AI_API_KEY:}
       apiKeyPairs: ${PF_PATHFINDER_AI_KEY_PAIRS:}
-      timeoutMillis: ${PF_PATHFINDER_AI_TIMEOUT_MS:12000}
+      timeoutMillis: ${PF_PATHFINDER_AI_TIMEOUT_MS:25000}
 
 management:
   endpoints:

@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -57,6 +59,14 @@ public class ApiExceptionHandler {
       return ResponseEntity.status(409).body(Envelope.err(safeRequestId(req), "RES_CONFLICT", "WeChat already bound", Map.of()));
     }
     return ResponseEntity.status(400).body(Envelope.err(safeRequestId(req), "REQ_INVALID", "Invalid request", Map.of()));
+  }
+
+  @ExceptionHandler({MultipartException.class, MaxUploadSizeExceededException.class})
+  public ResponseEntity<Envelope<Object>> handleMultipartError(
+      Exception ex,
+      HttpServletRequest req
+  ) {
+    return ResponseEntity.status(400).body(Envelope.err(safeRequestId(req), "REQ_INVALID", "Invalid upload request", Map.of()));
   }
 
   private Map<String, Object> fieldErr(FieldError e) {

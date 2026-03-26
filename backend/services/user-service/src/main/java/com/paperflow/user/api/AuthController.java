@@ -11,6 +11,7 @@ import com.paperflow.user.repo.UserRepository;
 import com.paperflow.user.repo.VerificationRepository;
 import com.paperflow.user.service.AuthService;
 import com.paperflow.user.service.MailService;
+import com.paperflow.user.service.MailTemplateService;
 import jakarta.validation.Valid;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
@@ -73,8 +74,14 @@ public class AuthController {
       data.put("status", "ALREADY_REGISTERED");
       return ResponseEntity.ok(Envelope.ok(safeRequestId(requestId), data, List.of()));
     }
-    String code = genCode();
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    VerificationEntity pending = verifications.findTopByTypeAndTargetAndConsumedAtIsNullOrderByCreatedAtDesc("EMAIL_REGISTER", email).orElse(null);
+    if (pending != null && now.isBefore(pending.getExpiresAt())) {
+      data.put("status", "CODE_ALREADY_SENT");
+      data.put("expiresAt", pending.getExpiresAt());
+      return ResponseEntity.ok(Envelope.ok(safeRequestId(requestId), data, List.of()));
+    }
+    String code = genCode();
     boolean exposeDebugCode = isInMemoryH2() || !mail.isEnabled();
     VerificationEntity v = new VerificationEntity();
     v.setId("ver_" + UUID.randomUUID().toString().replace("-", ""));
@@ -94,7 +101,7 @@ public class AuthController {
         }
       } else {
         try {
-          mail.sendVerificationCode(email, "注册", code);
+          mail.sendVerificationCode(email, MailTemplateService.TYPE_REGISTER_VERIFICATION, "注册", code);
           data.put("delivery", "EMAIL");
         } catch (MailException e) {
           if (isAnyH2()) {
@@ -236,7 +243,7 @@ public class AuthController {
           }
         } else {
           try {
-            mail.sendVerificationCode(email, "找回密码", code);
+            mail.sendVerificationCode(email, MailTemplateService.TYPE_PASSWORD_RESET_VERIFICATION, "找回密码", code);
             data.put("delivery", "EMAIL");
           } catch (MailException e) {
             if (isAnyH2()) {

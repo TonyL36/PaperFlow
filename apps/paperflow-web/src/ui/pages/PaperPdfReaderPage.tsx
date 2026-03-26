@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { AiMarkdown } from "../components/AiMarkdown";
+import { useAuth } from "../auth/AuthContext";
 import { Card } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
 import { Spinner } from "../components/Spinner";
 import { Button } from "../components/Button";
-import { apiGetPost } from "../data/api";
+import { apiGeneratePathfinderPlan, apiGetPost } from "../data/api";
+import type { PathfinderModel } from "../data/types";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { Page } from "../layout/Page";
 import { resolvePaperPdf } from "../utils/paper";
@@ -12,8 +15,13 @@ import { resolvePaperPdf } from "../utils/paper";
 type AiMessage = { id: string; role: "assistant" | "user"; content: string };
 
 export function PaperPdfReaderPage() {
+  const auth = useAuth();
+  const accessToken = auth.state.status === "authenticated" ? auth.state.accessToken : undefined;
   const { postId } = useParams();
   const [aiInput, setAiInput] = useState("");
+  const [aiModel, setAiModel] = useState<PathfinderModel>("glm-4-flash");
+  const [aiPending, setAiPending] = useState(false);
+  const [aiError, setAiError] = useState<unknown | null>(null);
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([
     { id: "pdf_welcome", role: "assistant", content: "你好，我会结合左侧论文 PDF 帮你做总结、问答与术语解释。" }
   ]);
@@ -21,8 +29,8 @@ export function PaperPdfReaderPage() {
   const pid = useMemo(() => (postId ? decodeURIComponent(postId) : ""), [postId]);
   const { state, reload } = useAsyncData(async (signal) => {
     if (!pid) return null;
-    return apiGetPost(pid, signal);
-  }, [pid]);
+    return apiGetPost(pid, accessToken, signal);
+  }, [pid, accessToken]);
 
   if (!pid) {
     return (
@@ -37,18 +45,45 @@ export function PaperPdfReaderPage() {
   const post = state.data ?? null;
   const paperMeta = resolvePaperPdf(pid);
 
-  const sendAiMessage = () => {
+  const sendAiMessage = async () => {
     const content = aiInput.trim();
-    if (!content) return;
+    if (!content || aiPending) return;
     const now = Date.now();
     const userMsg: AiMessage = { id: `pdf_u_${now}`, role: "user", content };
-    const assistantMsg: AiMessage = {
-      id: `pdf_a_${now}`,
-      role: "assistant",
-      content: `已收到你的问题：“${content}”。我会结合论文 ${paperMeta.title} 给出结构化解读与下一步建议。`
-    };
-    setAiMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setAiMessages((prev) => [...prev, userMsg]);
     setAiInput("");
+    setAiError(null);
+    if (auth.state.status !== "authenticated") {
+      setAiMessages((prev) => [...prev, { id: `pdf_a_auth_${now}`, role: "assistant", content: "请先登录后再发起后端 AI 对话。" }]);
+      return;
+    }
+    setAiPending(true);
+    try {
+      const prompt = [
+        "你是 PaperFlow 论文阅读助手，请根据论文标题与文章上下文回答用户问题。",
+        `论文标题：${paperMeta.title}`,
+        post ? `来源文章标题：${post.title}` : "",
+        post?.content ? `来源文章正文（节选）：\n${post.content.slice(0, 5000)}` : "",
+        `用户问题：${content}`,
+        "请输出：1) 结论 2) 关键依据 3) 后续阅读建议。"
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      const generated = await apiGeneratePathfinderPlan(auth.state.accessToken, { goal: prompt, model: aiModel });
+      setAiMessages((prev) => [
+        ...prev,
+        {
+          id: `pdf_a_${now}`,
+          role: "assistant",
+          content: generated.assistantMessage || "后端已调用成功，但未返回可读回答。"
+        }
+      ]);
+    } catch (err) {
+      setAiError(err);
+      setAiMessages((prev) => [...prev, { id: `pdf_a_err_${now}`, role: "assistant", content: "后端 AI 调用失败，请稍后重试。" }]);
+    } finally {
+      setAiPending(false);
+    }
   };
 
   return (
@@ -84,11 +119,24 @@ export function PaperPdfReaderPage() {
           <div className="pf-ai-chatlog">
             {aiMessages.map((msg) => (
               <div key={msg.id} className={["pf-ai-chatmsg", msg.role === "user" ? "pf-ai-chatmsg--user" : "pf-ai-chatmsg--assistant"].join(" ")}>
-                {msg.content}
+                {msg.role === "assistant" ? <AiMarkdown content={msg.content} /> : msg.content}
               </div>
             ))}
           </div>
           <div className="pf-ai-composer">
+            <div className="pf-row" style={{ marginBottom: 8, gap: 8, alignItems: "center" }}>
+              <span className="pf-muted2">模型</span>
+              <select
+                className="pf-select"
+                style={{ width: 180 }}
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value as PathfinderModel)}
+                disabled={aiPending}
+              >
+                <option value="glm-4-flash">glm-4-flash</option>
+                <option value="glm-z1-flash">glm-z1-flash</option>
+              </select>
+            </div>
             <textarea
               value={aiInput}
               onChange={(e) => setAiInput(e.target.value)}
@@ -104,10 +152,11 @@ export function PaperPdfReaderPage() {
             />
             <div className="pf-row" style={{ justifyContent: "space-between" }}>
               <span className="pf-muted2">Shift+Enter 换行</span>
-              <Button variant="primary" onClick={sendAiMessage} disabled={!aiInput.trim()}>
-                发送
+              <Button variant="primary" onClick={sendAiMessage} disabled={aiPending || !aiInput.trim()}>
+                {aiPending ? "发送中..." : "发送"}
               </Button>
             </div>
+            {aiError ? <ErrorState error={aiError} title="AI 调用失败" /> : null}
           </div>
         </Card>
       </div>

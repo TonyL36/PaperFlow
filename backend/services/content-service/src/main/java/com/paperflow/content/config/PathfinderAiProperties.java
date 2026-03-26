@@ -9,7 +9,7 @@ public class PathfinderAiProperties {
   private String endpoint = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
   private String apiKey = "";
   private String apiKeyPairs = "";
-  private int timeoutMillis = 12000;
+  private int timeoutMillis = 25000;
 
   public String getEndpoint() {
     return endpoint;

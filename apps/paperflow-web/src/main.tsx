@@ -7,6 +7,13 @@ import "./ui/styles/global.css";
 
 const rawBaseUrl = import.meta.env.BASE_URL;
 const routerBasename = rawBaseUrl.endsWith("/") ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
+const normalizedBasename = routerBasename && routerBasename !== "/" ? routerBasename : "";
+const currentPath = window.location.pathname;
+const pathWithSlash = `${normalizedBasename}/`;
+if (normalizedBasename && currentPath !== normalizedBasename && !currentPath.startsWith(pathWithSlash)) {
+  const nextPath = currentPath === "/" ? pathWithSlash : `${normalizedBasename}${currentPath}`;
+  window.location.replace(`${nextPath}${window.location.search}${window.location.hash}`);
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

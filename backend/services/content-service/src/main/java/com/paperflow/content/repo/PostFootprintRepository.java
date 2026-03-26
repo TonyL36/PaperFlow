@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 
 public interface PostFootprintRepository extends JpaRepository<PostFootprintEntity, UserPostKey> {
+  long countByIdUserId(String userId);
+
   @EntityGraph(attributePaths = "post")
   List<PostFootprintEntity> findByIdUserIdOrderByLastViewedAtDesc(String userId, Pageable pageable);
 }

@@ -1,10 +1,11 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
 import { Spinner } from "../components/Spinner";
-import { apiGetMyProfile, apiUpdateMyProfile } from "../data/api";
+import { apiGetMyProfile, apiListFavorites, apiListFootprints, apiUpdateMyProfile, apiUploadMyAvatar } from "../data/api";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { Page } from "../layout/Page";
 
@@ -16,7 +17,10 @@ export function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saveError, setSaveError] = useState<unknown | null>(null);
+  const { state: favoritesState } = useAsyncData((signal) => apiListFavorites(1, 50, accessToken, signal), [accessToken]);
+  const { state: footprintsState } = useAsyncData((signal) => apiListFootprints(1, 50, accessToken, signal), [accessToken]);
 
   useEffect(() => {
     if (state.status === "success") {
@@ -48,14 +52,45 @@ export function ProfilePage() {
               </div>
             </div>
             <div className="pf-divider" />
+            <div className="pf-row" style={{ flexWrap: "wrap", justifyContent: "space-between" }}>
+              <span className="pf-muted2">我的统计</span>
+              <div className="pf-row" style={{ flexWrap: "wrap" }}>
+                <span className="pf-pill">收藏 {favoritesState.data?.page?.totalItems ?? favoritesState.data?.items?.length ?? 0}</span>
+                <span className="pf-pill">足迹 {footprintsState.data?.page?.totalItems ?? footprintsState.data?.items?.length ?? 0}</span>
+                <Link className="pf-navlink" to="/favorites">查看收藏</Link>
+                <Link className="pf-navlink" to="/footprints">查看足迹</Link>
+              </div>
+            </div>
+            <div className="pf-divider" />
             <div className="pf-grid" style={{ gap: 10 }}>
               <label className="pf-grid" style={{ gap: 6 }}>
                 <span className="pf-muted">昵称</span>
                 <input className="pf-input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={64} />
               </label>
               <label className="pf-grid" style={{ gap: 6 }}>
-                <span className="pf-muted">头像 URL</span>
-                <input className="pf-input" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} maxLength={512} />
+                <span className="pf-muted">本地头像上传</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploadingAvatar(true);
+                    setSaveError(null);
+                    try {
+                      const profile = await apiUploadMyAvatar(accessToken, file);
+                      setAvatarUrl(profile.avatarUrl ?? "");
+                      await auth.refreshMe();
+                      reload();
+                    } catch (err) {
+                      setSaveError(err);
+                    } finally {
+                      setUploadingAvatar(false);
+                      e.currentTarget.value = "";
+                    }
+                  }}
+                />
+                <span className="pf-muted2">{uploadingAvatar ? "上传中..." : "支持 png/jpg/webp，最大 2MB"}</span>
               </label>
               <label className="pf-grid" style={{ gap: 6 }}>
                 <span className="pf-muted">个人简介</span>
@@ -71,7 +106,7 @@ export function ProfilePage() {
                     try {
                       await apiUpdateMyProfile(accessToken, {
                         displayName: displayName.trim(),
-                        avatarUrl: avatarUrl.trim() || null,
+                        avatarUrl: avatarUrl || null,
                         bio: bio.trim() || null
                       });
                       await auth.refreshMe();
@@ -93,4 +128,3 @@ export function ProfilePage() {
     </Page>
   );
 }
-

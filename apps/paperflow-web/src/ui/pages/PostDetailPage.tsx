@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { apiCreateComment, apiFavoritePost, apiGetPost, apiListComments, apiUnfavoritePost } from "../data/api";
-import type { Comment, Post } from "../data/types";
+import { apiCreateComment, apiFavoritePost, apiGeneratePathfinderPlan, apiGetPost, apiListComments, apiUnfavoritePost } from "../data/api";
+import type { Comment, PathfinderModel, Post } from "../data/types";
 import { useAuth } from "../auth/AuthContext";
 import { Alert } from "../components/Alert";
+import { AiMarkdown } from "../components/AiMarkdown";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { EmptyState } from "../components/EmptyState";
@@ -18,32 +19,73 @@ import { resolvePaperPdf } from "../utils/paper";
 type DetailData = { post: Post | null; comments: Comment[] };
 type AiMessage = { id: string; role: "assistant" | "user"; content: string; references?: string[] };
 type SelectionPopover = { text: string; left: number; top: number };
+const aiWelcomeMessage: AiMessage = { id: "m_welcome", role: "assistant", content: "你好，我是 PaperFlow 阅读助手。你可以让我总结、解释术语或提炼重点。" };
 
 export function PostDetailPage() {
   const { postId } = useParams();
   const auth = useAuth();
+  const accessToken = auth.state.status === "authenticated" ? auth.state.accessToken : undefined;
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<unknown | null>(null);
   const [aiInput, setAiInput] = useState("");
+  const [aiModel, setAiModel] = useState<PathfinderModel>("glm-4-flash");
+  const [aiPending, setAiPending] = useState(false);
+  const [aiError, setAiError] = useState<unknown | null>(null);
   const [aiReferences, setAiReferences] = useState<string[]>([]);
   const [selectionPopover, setSelectionPopover] = useState<SelectionPopover | null>(null);
-  const [aiMessages, setAiMessages] = useState<AiMessage[]>([
-    { id: "m_welcome", role: "assistant", content: "你好，我是 PaperFlow 阅读助手。你可以让我总结、解释术语或提炼重点。" }
-  ]);
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([aiWelcomeMessage]);
   const articleBodyRef = useRef<HTMLDivElement | null>(null);
   const selectionPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const pid = useMemo(() => (postId ? decodeURIComponent(postId) : ""), [postId]);
+  const aiDraftKey = useMemo(() => (pid ? `paperflow.post.ai.draft.${pid}` : ""), [pid]);
 
   const { state, reload } = useAsyncData<DetailData>(
     async (signal) => {
       if (!pid) return { post: null, comments: [] };
-      const [p, c] = await Promise.all([apiGetPost(pid, signal), apiListComments(pid, 1, 50, signal)]);
+      const [p, c] = await Promise.all([apiGetPost(pid, accessToken, signal), apiListComments(pid, 1, 50, signal)]);
       return { post: p, comments: c.items };
     },
-    [pid]
+    [pid, accessToken]
   );
+  useEffect(() => {
+    if (!aiDraftKey) return;
+    try {
+      const raw = localStorage.getItem(aiDraftKey);
+      if (!raw) {
+        setAiInput("");
+        setAiReferences([]);
+        setAiMessages([aiWelcomeMessage]);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { input?: string; model?: PathfinderModel; references?: string[]; messages?: AiMessage[] };
+      setAiInput(parsed.input ?? "");
+      setAiModel(parsed.model === "glm-z1-flash" ? "glm-z1-flash" : "glm-4-flash");
+      setAiReferences(Array.isArray(parsed.references) ? parsed.references.filter((it) => typeof it === "string") : []);
+      if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+        setAiMessages(parsed.messages.slice(-30));
+      } else {
+        setAiMessages([aiWelcomeMessage]);
+      }
+    } catch {
+      setAiMessages([aiWelcomeMessage]);
+    }
+  }, [aiDraftKey]);
+
+  useEffect(() => {
+    if (!aiDraftKey) return;
+    try {
+      const payload = JSON.stringify({
+        input: aiInput,
+        model: aiModel,
+        references: aiReferences.slice(0, 8),
+        messages: aiMessages.slice(-30)
+      });
+      localStorage.setItem(aiDraftKey, payload);
+    } catch {
+    }
+  }, [aiDraftKey, aiInput, aiModel, aiReferences, aiMessages]);
 
   if (!pid) {
     return (
@@ -70,13 +112,6 @@ export function PostDetailPage() {
   };
   const clearCurrentSelection = () => {
     window.getSelection()?.removeAllRanges();
-  };
-  const resolveTranslatedText = (text: string) => {
-    const normalized = text.replace(/\s+/g, " ").trim();
-    if (/[\u4e00-\u9fff]/.test(normalized)) {
-      return `English translation (demo): ${normalized}`;
-    }
-    return `中文翻译（演示）：${normalized}`;
   };
   const updateSelectionPopover = () => {
     const selection = window.getSelection();
@@ -116,34 +151,91 @@ export function PostDetailPage() {
     hideSelectionPopover();
     clearCurrentSelection();
   };
-  const translateSelectionToChat = () => {
+  const translateSelectionToChat = async () => {
     if (!selectionPopover?.text) return;
     const now = Date.now();
     const selected = selectionPopover.text;
-    const translated = resolveTranslatedText(selected);
     const userMsg: AiMessage = { id: `u_translate_${now}`, role: "user", content: "请翻译这段引用。", references: [selected] };
-    const assistantMsg: AiMessage = { id: `a_translate_${now}`, role: "assistant", content: translated, references: [selected] };
-    setAiMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setAiMessages((prev) => [...prev, userMsg]);
+    setAiError(null);
     hideSelectionPopover();
     clearCurrentSelection();
+    if (auth.state.status !== "authenticated") {
+      setAiMessages((prev) => [...prev, { id: `a_translate_auth_${now}`, role: "assistant", content: "请先登录后再发起后端 AI 对话。", references: [selected] }]);
+      return;
+    }
+    setAiPending(true);
+    try {
+      const prompt = [
+        "你是 PaperFlow 阅读助手，请做高质量双语翻译。",
+        `文章标题：${post?.title ?? "未知标题"}`,
+        `待翻译原文：${selected}`,
+        "如果原文是中文，请翻译成英文；如果原文是英文，请翻译成中文。",
+        "请先给出译文，再给出一句术语说明。"
+      ].join("\n\n");
+      const generated = await apiGeneratePathfinderPlan(auth.state.accessToken, { goal: prompt, model: aiModel });
+      const assistantMsg: AiMessage = {
+        id: `a_translate_${now}`,
+        role: "assistant",
+        content: generated.assistantMessage || "后端已调用成功，但未返回可读译文。",
+        references: [selected]
+      };
+      setAiMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      setAiError(err);
+      setAiMessages((prev) => [...prev, { id: `a_translate_err_${now}`, role: "assistant", content: "后端翻译调用失败，请稍后重试。", references: [selected] }]);
+    } finally {
+      setAiPending(false);
+    }
   };
-  const sendAiMessage = () => {
+  const sendAiMessage = async () => {
     const raw = aiInput.trim();
     const content = raw || (aiReferences.length ? "请基于引用内容进行解读。" : "");
-    if (!content) return;
+    if (!content || aiPending) return;
     const now = Date.now();
     const refs = aiReferences.length ? aiReferences : undefined;
     const userMsg: AiMessage = { id: `u_${now}`, role: "user", content, references: refs };
-    const assistantMsg: AiMessage = {
-      id: `a_${now}`,
-      role: "assistant",
-      content: refs
-        ? `已收到你的问题：“${content}”。我会重点结合你标记的 ${refs.length} 处引用进行回答，并补充下一步阅读建议。`
-        : `已收到你的问题：“${content}”。我会基于当前文章正文给出结构化解读与下一步阅读建议。`
-    };
-    setAiMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setAiMessages((prev) => [...prev, userMsg]);
     setAiInput("");
     setAiReferences([]);
+    setAiError(null);
+    if (auth.state.status !== "authenticated") {
+      setAiMessages((prev) => [...prev, { id: `a_auth_${now}`, role: "assistant", content: "请先登录后再发起后端 AI 对话。" }]);
+      return;
+    }
+    setAiPending(true);
+    try {
+      const contextPost = post?.content ? post.content.slice(0, 5000) : "";
+      const contextRefs = refs?.length ? refs.join("\n") : "";
+      const prompt = [
+        "你是 PaperFlow 阅读助手，请根据文章内容回答用户问题。",
+        `文章标题：${post?.title ?? "未知标题"}`,
+        contextPost ? `文章正文（节选）：\n${contextPost}` : "",
+        contextRefs ? `用户引用片段：\n${contextRefs}` : "",
+        `用户问题：${content}`,
+        "请输出：1) 核心结论 2) 关键依据 3) 下一步建议。"
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      const generated = await apiGeneratePathfinderPlan(auth.state.accessToken, { goal: prompt, model: aiModel });
+      let assistantContent = generated.assistantMessage || "后端已调用成功，但未返回可读回答。";
+      if (assistantContent.trim() === content.trim()) {
+        const steps = (generated.focus ?? []).slice(0, 3).map((f, idx) => `${idx + 1}. ${f}`).join("\n");
+        assistantContent = steps ? `核心要点：\n${steps}\n\n建议：先从第 1 点入手，再逐步展开。` : "我已理解你的问题，请给我一个更具体方向，例如“按三点总结并给行动建议”。";
+      }
+      const assistantMsg: AiMessage = {
+        id: `a_${now}`,
+        role: "assistant",
+        content: assistantContent,
+        references: refs
+      };
+      setAiMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      setAiError(err);
+      setAiMessages((prev) => [...prev, { id: `a_err_${now}`, role: "assistant", content: "后端 AI 调用失败，请稍后重试。" }]);
+    } finally {
+      setAiPending(false);
+    }
   };
 
   useEffect(() => {
@@ -266,11 +358,24 @@ export function PostDetailPage() {
                       ))}
                     </div>
                   ) : null}
-                  {msg.content}
+                  {msg.role === "assistant" ? <AiMarkdown content={msg.content} /> : msg.content}
                 </div>
               ))}
             </div>
             <div className="pf-ai-composer">
+              <div className="pf-row" style={{ marginBottom: 8, gap: 8, alignItems: "center" }}>
+                <span className="pf-muted2">模型</span>
+                <select
+                  className="pf-select"
+                  style={{ width: 180 }}
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value as PathfinderModel)}
+                  disabled={aiPending}
+                >
+                  <option value="glm-4-flash">glm-4-flash</option>
+                  <option value="glm-z1-flash">glm-z1-flash</option>
+                </select>
+              </div>
               {aiReferences.length ? (
                 <div className="pf-ai-refdock">
                   {aiReferences.map((ref) => (
@@ -293,7 +398,7 @@ export function PostDetailPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    sendAiMessage();
+                    void sendAiMessage();
                   }
                 }}
                 rows={3}
@@ -305,11 +410,12 @@ export function PostDetailPage() {
                 <Button
                   variant="primary"
                   onClick={sendAiMessage}
-                  disabled={!aiInput.trim() && aiReferences.length === 0}
+                    disabled={aiPending || (!aiInput.trim() && aiReferences.length === 0)}
                 >
-                  发送
+                  {aiPending ? "发送中..." : "发送"}
                 </Button>
               </div>
+              {aiError ? <ErrorState error={aiError} title="AI 调用失败" /> : null}
             </div>
           </Card>
         </div>
@@ -319,7 +425,7 @@ export function PostDetailPage() {
           <Button className="pf-selection-popover__btn" onClick={appendSelectionToReferences}>
             🔖 添加到对话
           </Button>
-          <Button className="pf-selection-popover__btn" variant="primary" onClick={translateSelectionToChat}>
+          <Button className="pf-selection-popover__btn" variant="primary" onClick={() => void translateSelectionToChat()}>
             🌐 翻译
           </Button>
         </div>
@@ -328,7 +434,9 @@ export function PostDetailPage() {
       <Card>
         <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
           <h3>评论</h3>
-          <div className="pf-muted2">展示：APPROVED；创建：PENDING（需管理员审核）</div>
+          <div className="pf-muted2">
+            展示：APPROVED；创建：{post?.commentModerationEnabled === false ? "APPROVED（即时发布）" : "PENDING（需管理员审核）"}
+          </div>
         </div>
 
         <div className="pf-grid" style={{ marginTop: 12 }}>
@@ -386,7 +494,7 @@ export function PostDetailPage() {
                   }}
                   disabled={submitting || !commentText.trim()}
                 >
-                  {submitting ? "提交中..." : "提交（进入待审核）"}
+                  {submitting ? "提交中..." : post?.commentModerationEnabled === false ? "提交（即时发布）" : "提交（进入待审核）"}
                 </Button>
               </div>
             </div>

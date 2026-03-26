@@ -6,6 +6,7 @@ import { Card } from "../components/Card";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { Spinner } from "../components/Spinner";
+import { AiMarkdown } from "../components/AiMarkdown";
 import {
   apiFavoritePathfinderSession,
   apiGeneratePathfinderPlan,
@@ -103,11 +104,14 @@ export function PathfinderPage() {
         if (cancelled) return;
         const items = data.items ?? [];
         setHistorySessions(items);
-        if (items.length === 0) {
+        const sid = searchParams.get("sid");
+        if (!sid) {
           return;
         }
-        const sid = searchParams.get("sid");
-        const picked = (sid ? items.find((it) => it.sessionId === sid) : null) ?? items[0];
+        const picked = items.find((it) => it.sessionId === sid);
+        if (!picked) {
+          return;
+        }
         hydrateSession(picked, searchParams.get("stage"));
       } catch (err) {
         if (cancelled) return;
@@ -176,6 +180,29 @@ export function PathfinderPage() {
     }
   };
 
+  const generateAssistantFeedback = async (
+    nextPlan: PathfinderPlan,
+    nextStageId: string,
+    prompt: string,
+    fallback: string,
+    messageId: string
+  ) => {
+    let assistantContent = fallback;
+    if (accessToken) {
+      try {
+        const generated = await apiGeneratePathfinderPlan(accessToken, { goal: prompt, model: nextPlan.model });
+        if (generated.assistantMessage?.trim()) {
+          assistantContent = generated.assistantMessage.trim();
+        }
+      } catch {
+      }
+    }
+    const assistantMessage: ChatMessage = { id: messageId, role: "assistant", content: assistantContent };
+    const nextMessages: ChatMessage[] = [...messages, assistantMessage];
+    setMessages(nextMessages);
+    void persistSession(nextPlan, nextMessages, nextStageId);
+  };
+
   const submitGoal = async (goalOverride?: string) => {
     const goal = (goalOverride ?? goalInput).trim();
     if (!goal || isGenerating || !accessToken) return;
@@ -187,14 +214,15 @@ export function PathfinderPage() {
     const beforeAssistant = [...messages, userMessage];
     setMessages(beforeAssistant);
     try {
-      const generated = await apiGeneratePathfinderPlan(accessToken, { goal, model: selectedModel });
+      const requestGoal = plan ? buildPlanUpdatePrompt(plan, goal, messages) : goal;
+      const generated = await apiGeneratePathfinderPlan(accessToken, { goal: requestGoal, model: selectedModel });
       const nextPlan: PathfinderPlan = {
-        sessionId: createSessionId(),
-        goal: generated.goal,
+        sessionId: plan?.sessionId ?? createSessionId(),
+        goal,
         model: generated.model,
         focus: generated.focus ?? [],
         stages: recalculateStageStatus(generated.stages ?? []),
-        favorited: false
+        favorited: plan?.favorited ?? false
       };
       const nextStageId = pickCurrentStageId(nextPlan.stages, null);
       const assistantMessage: ChatMessage = {
@@ -208,18 +236,20 @@ export function PathfinderPage() {
       setActiveStageId(nextStageId);
       syncPathStage(nextPlan, nextStageId);
       await persistSession(nextPlan, nextMessages, nextStageId);
+      setGoalInput("");
     } catch (err) {
       setGenerateError(err);
-      setPlan(null);
-      setActiveStageId(null);
-      setSearchParams({}, { replace: true });
+      if (!plan) {
+        setPlan(null);
+        setActiveStageId(null);
+        setSearchParams({}, { replace: true });
+      }
       setMessages((prev) => [
         ...prev,
         { id: `path_e_${now}`, role: "assistant", content: "路径生成失败，你可以稍后重试或调整目标描述。" }
       ]);
     } finally {
       setIsGenerating(false);
-      setGoalInput("");
     }
   };
 
@@ -228,16 +258,15 @@ export function PathfinderPage() {
     setActiveStageId(stageId);
     syncPathStage(plan, stageId);
     const now = Date.now();
-    const nextMessages = [
-      ...messages,
-      {
-        id: `path_s_${now}`,
-        role: "assistant",
-        content: `已切换到「${stageTitleById(plan.stages, stageId)}」，当前状态：${stageStatusLabel[stageById(plan.stages, stageId)?.status ?? "locked"]}。`
-      } satisfies ChatMessage
-    ];
-    setMessages(nextMessages);
-    void persistSession(plan, nextMessages, stageId);
+    const fallback = `已切换到「${stageTitleById(plan.stages, stageId)}」，当前状态：${stageStatusLabel[stageById(plan.stages, stageId)?.status ?? "locked"]}。`;
+    const prompt = [
+      "你是 Pathfinder 学习助手，请基于当前阶段给出一句精炼学习提示。",
+      `学习总目标：${plan.goal}`,
+      `已切换阶段：${stageTitleById(plan.stages, stageId)}`,
+      `阶段状态：${stageStatusLabel[stageById(plan.stages, stageId)?.status ?? "locked"]}`,
+      "请输出一段可执行的下一步建议。"
+    ].join("\n\n");
+    void generateAssistantFeedback(plan, stageId, prompt, fallback, `path_s_${now}`);
   };
 
   const onToggleReading = (stageId: string, readingId: string) => {
@@ -260,19 +289,19 @@ export function PathfinderPage() {
     const nextActiveStageId = pickCurrentStageId(nextStages, activeStageId);
     const nextProgress = calcProgress(nextPlan);
     const now = Date.now();
-    const nextMessages = [
-      ...messages,
-      {
-        id: `path_p_${now}`,
-        role: "assistant",
-        content: `${reading.done ? "已撤销" : "已完成"}「${reading.title}」。阅读进度 ${nextProgress.doneReadings}/${nextProgress.totalReadings}，关卡进度 ${nextProgress.doneStages}/${nextProgress.totalStages}。`
-      } satisfies ChatMessage
-    ];
     setPlan(nextPlan);
-    setMessages(nextMessages);
     setActiveStageId(nextActiveStageId);
     syncPathStage(nextPlan, nextActiveStageId);
-    void persistSession(nextPlan, nextMessages, nextActiveStageId);
+    const fallback = `${reading.done ? "已撤销" : "已完成"}「${reading.title}」。阅读进度 ${nextProgress.doneReadings}/${nextProgress.totalReadings}，关卡进度 ${nextProgress.doneStages}/${nextProgress.totalStages}。`;
+    const prompt = [
+      "你是 Pathfinder 学习助手，请根据最新进度给出一句下一步建议。",
+      `学习总目标：${nextPlan.goal}`,
+      `本次动作：${reading.done ? "撤销完成" : "标记完成"}「${reading.title}」`,
+      `阅读进度：${nextProgress.doneReadings}/${nextProgress.totalReadings}`,
+      `关卡进度：${nextProgress.doneStages}/${nextProgress.totalStages}`,
+      "请输出一段简短可执行建议。"
+    ].join("\n\n");
+    void generateAssistantFeedback(nextPlan, nextActiveStageId, prompt, fallback, `path_p_${now}`);
   };
 
   const onToggleFavorite = async () => {
@@ -298,9 +327,50 @@ export function PathfinderPage() {
     hydrateSession(session, null);
   };
 
+  const onNewConversation = () => {
+    setPlan(null);
+    setActiveStageId(null);
+    setGenerateError(null);
+    setSaveError(null);
+    setMessages([welcomeMessage]);
+    setGoalInput("");
+    setSearchParams({}, { replace: true });
+  };
+
   return (
     <Page title="Pathfinder 学习路径" subtitle="类 GPT 交互式学习目标规划：输入目标，生成分阶段闯关路径。">
       <div className="pf-pathfinder-layout">
+        <div className="pf-pathfinder-history">
+          <Card>
+            <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
+              <h3>历史会话</h3>
+              <span className="pf-muted2">最近 20 条</span>
+            </div>
+            {!accessToken ? <EmptyState>登录后可读取历史会话。</EmptyState> : null}
+            {historyLoading ? <Spinner label="加载历史会话..." /> : null}
+            {historyError ? <ErrorState error={historyError} title="历史读取失败" /> : null}
+            {accessToken && !historyLoading && !historyError ? (
+              <div className="pf-grid" style={{ gap: 6, marginTop: 8 }}>
+                {historySessions.length === 0 ? <EmptyState>暂无历史会话</EmptyState> : null}
+                {historySessions.map((item) => (
+                  <button
+                    key={item.sessionId}
+                    type="button"
+                    className={["pf-pathfinder-history-item", plan?.sessionId === item.sessionId ? "pf-pathfinder-history-item--active" : null].filter(Boolean).join(" ")}
+                    onClick={() => onLoadHistorySession(item)}
+                  >
+                    <div className="pf-pathfinder-history-item__title">{formatGoalText(item.goal)}</div>
+                    <div className="pf-row" style={{ justifyContent: "space-between", gap: 6, marginTop: 4 }}>
+                      <span className="pf-muted2">{item.model}</span>
+                      <span>{item.favorited ? "⭐" : "☆"}</span>
+                    </div>
+                    <div className="pf-muted2" style={{ marginTop: 4 }}>会话 {item.sessionId}</div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </Card>
+        </div>
         <Card className="pf-pathfinder-chat">
           <div className="pf-ai-panel__head">
             <div>
@@ -309,10 +379,13 @@ export function PathfinderPage() {
                 {plan ? `会话 ${plan.sessionId} · 当前阶段 ${activeStage ? activeStage.title : "未选择"}` : "输入学习目标，生成阶段路线"}
               </div>
             </div>
-            <div className="pf-row" style={{ gap: 6 }}>
+            <div className="pf-row pf-pathfinder-actions" style={{ gap: 6 }}>
+              <Button variant="primary" onClick={onNewConversation} disabled={isGenerating || isSyncing}>
+                新对话
+              </Button>
               {plan ? (
                 <Button onClick={onToggleFavorite} disabled={!accessToken || isFavoritePending || isSyncing}>
-                  {plan.favorited ? "取消收藏会话" : "收藏会话"}
+                  {plan.favorited ? "★ 已收藏" : "☆ 收藏会话"}
                 </Button>
               ) : null}
               <span className="pf-pill">Beta</span>
@@ -321,7 +394,7 @@ export function PathfinderPage() {
           <div className="pf-ai-chatlog">
             {messages.map((msg) => (
               <div key={msg.id} className={["pf-ai-chatmsg", msg.role === "user" ? "pf-ai-chatmsg--user" : "pf-ai-chatmsg--assistant"].join(" ")}>
-                {msg.content}
+                {msg.role === "assistant" ? <AiMarkdown content={msg.content} /> : msg.content}
               </div>
             ))}
           </div>
@@ -358,88 +431,13 @@ export function PathfinderPage() {
                 {accessToken ? (isSyncing ? "正在同步到后端..." : "已登录，模型调用与会话将由后端处理") : "请先登录后再生成路径"}
               </span>
               <Button variant="primary" onClick={() => void submitGoal()} disabled={!goalInput.trim() || isGenerating || !accessToken}>
-                {isGenerating ? "生成中..." : "生成学习路径"}
+                {isGenerating ? "处理中..." : plan ? "修改当前计划" : "生成学习路径"}
               </Button>
             </div>
           </div>
         </Card>
 
         <div className="pf-pathfinder-result">
-          <Card className="pf-pathfinder-overview">
-            <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
-              <h3>路径结果</h3>
-              {plan ? <span className="pf-pill">已生成</span> : <span className="pf-pill">等待输入</span>}
-            </div>
-            {isGenerating ? (
-              <div style={{ marginTop: 8 }}>
-                <Spinner label="正在生成学习路径..." />
-              </div>
-            ) : generateError ? (
-              <div style={{ marginTop: 10 }}>
-                <ErrorState
-                  error={generateError}
-                  title="路径生成失败"
-                  hint="可重试或将目标描述改得更具体。"
-                  onRetry={() => {
-                    void submitGoal(lastGoal);
-                  }}
-                />
-              </div>
-            ) : plan ? (
-              <div className="pf-grid" style={{ gap: 8, marginTop: 8 }}>
-                <div className="pf-muted2">目标：{plan.goal}</div>
-                <div className="pf-muted2">模型：{plan.model}</div>
-                <div className="pf-muted2">收藏状态：{plan.favorited ? "已收藏" : "未收藏"}</div>
-                <div className="pf-row" style={{ flexWrap: "wrap", gap: 6 }}>
-                  {plan.focus.map((f) => (
-                    <span key={f} className="pf-ai-refchip">
-                      🎯 {f}
-                    </span>
-                  ))}
-                </div>
-                <div className="pf-muted2">
-                  阅读进度：{progress.doneReadings}/{progress.totalReadings}（{progress.percent}%）
-                </div>
-                <div className="pf-muted2">
-                  闯关进度：{progress.doneStages}/{progress.totalStages}
-                </div>
-              </div>
-            ) : (
-              <EmptyState>先在左侧输入学习目标，再生成路径。</EmptyState>
-            )}
-          </Card>
-          <Card>
-            <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
-              <h3>历史会话</h3>
-              <span className="pf-muted2">最近 20 条</span>
-            </div>
-            {!accessToken ? <EmptyState>登录后可读取历史会话。</EmptyState> : null}
-            {historyLoading ? <Spinner label="加载历史会话..." /> : null}
-            {historyError ? <ErrorState error={historyError} title="历史读取失败" /> : null}
-            {accessToken && !historyLoading && !historyError ? (
-              <div className="pf-grid" style={{ gap: 6, marginTop: 8 }}>
-                {historySessions.length === 0 ? <EmptyState>暂无历史会话</EmptyState> : null}
-                {historySessions.map((item) => (
-                  <button
-                    key={item.sessionId}
-                    type="button"
-                    className={["pf-stage-node", plan?.sessionId === item.sessionId ? "pf-stage-node--active" : null].filter(Boolean).join(" ")}
-                    onClick={() => onLoadHistorySession(item)}
-                  >
-                    <div className="pf-stage-node__meta">
-                      <div className="pf-row" style={{ gap: 6 }}>
-                        <strong>{item.goal}</strong>
-                        <span className="pf-muted2">{item.model}</span>
-                        <span>{item.favorited ? "⭐" : "☆"}</span>
-                      </div>
-                      <div className="pf-muted2">会话 {item.sessionId}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </Card>
-
           <Card className="pf-pathfinder-nodes">
             <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
               <h3>闯关节点</h3>
@@ -473,6 +471,50 @@ export function PathfinderPage() {
               </div>
             ) : (
               <EmptyState>暂无节点数据</EmptyState>
+            )}
+          </Card>
+
+          <Card className="pf-pathfinder-overview">
+            <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
+              <h3>路径结果</h3>
+              {plan ? <span className="pf-pill">已生成</span> : <span className="pf-pill">等待输入</span>}
+            </div>
+            {isGenerating ? (
+              <div style={{ marginTop: 8 }}>
+                <Spinner label="正在生成学习路径..." />
+              </div>
+            ) : generateError ? (
+              <div style={{ marginTop: 10 }}>
+                <ErrorState
+                  error={generateError}
+                  title="路径生成失败"
+                  hint="可重试或将目标描述改得更具体。"
+                  onRetry={() => {
+                    void submitGoal(lastGoal);
+                  }}
+                />
+              </div>
+            ) : plan ? (
+              <div className="pf-grid" style={{ gap: 8, marginTop: 8 }}>
+                <div className="pf-muted2">目标：{formatGoalText(plan.goal)}</div>
+                <div className="pf-muted2">模型：{plan.model}</div>
+                <div className="pf-muted2">收藏状态：{plan.favorited ? "已收藏" : "未收藏"}</div>
+                <div className="pf-row" style={{ flexWrap: "wrap", gap: 6 }}>
+                  {plan.focus.map((f) => (
+                    <span key={f} className="pf-ai-refchip">
+                      🎯 {f}
+                    </span>
+                  ))}
+                </div>
+                <div className="pf-muted2">
+                  阅读进度：{progress.doneReadings}/{progress.totalReadings}（{progress.percent}%）
+                </div>
+                <div className="pf-muted2">
+                  闯关进度：{progress.doneStages}/{progress.totalStages}
+                </div>
+              </div>
+            ) : (
+              <EmptyState>先在左侧输入学习目标，再生成路径。</EmptyState>
             )}
           </Card>
 
@@ -559,4 +601,29 @@ function calcProgress(nextPlan: PathfinderPlan) {
 
 function createSessionId() {
   return `PF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function buildPlanUpdatePrompt(plan: PathfinderPlan, userInput: string, history: ChatMessage[]) {
+  const stageSummary = plan.stages
+    .map((s, i) => `${i + 1}. ${s.title}（${s.status}，${s.etaDays}天）`)
+    .join("\n");
+  const recent = history.slice(-6).map((m) => `${m.role === "user" ? "用户" : "助手"}：${m.content}`).join("\n");
+  return [
+    `当前目标：${formatGoalText(plan.goal)}`,
+    `当前模型：${plan.model}`,
+    "当前阶段概览：",
+    stageSummary || "暂无",
+    recent ? `近期对话：\n${recent}` : "",
+    `请基于以上内容，按我的新要求重排学习路径：${userInput}`,
+    "输出仍需为可执行的阶段式学习计划。"
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function formatGoalText(goal: string) {
+  const text = goal ?? "";
+  const matched = text.match(/重排学习路径：([^\n]+)/);
+  const candidate = matched?.[1] ?? text;
+  return candidate.replace(/\s+/g, " ").trim();
 }

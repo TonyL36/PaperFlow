@@ -10,6 +10,7 @@ import com.paperflow.user.repo.UserRepository;
 import com.paperflow.user.repo.UserVerificationRepository;
 import com.paperflow.user.service.AuthService;
 import com.paperflow.user.service.MailService;
+import com.paperflow.user.service.MailTemplateService;
 import jakarta.validation.Valid;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
@@ -108,7 +109,7 @@ public class UserBindingsController {
         }
       } else {
         try {
-          mail.sendVerificationCode(email, "绑定邮箱", code);
+          mail.sendVerificationCode(email, MailTemplateService.TYPE_BIND_EMAIL_VERIFICATION, "绑定邮箱", code);
           data.put("delivery", "EMAIL");
         } catch (MailException e) {
           if (isAnyH2()) {

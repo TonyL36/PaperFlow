@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 
 public interface PostFavoriteRepository extends JpaRepository<PostFavoriteEntity, UserPostKey> {
   boolean existsByIdUserIdAndIdPostId(String userId, String postId);
+  long countByIdUserId(String userId);
 
   @EntityGraph(attributePaths = "post")
   List<PostFavoriteEntity> findByIdUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);

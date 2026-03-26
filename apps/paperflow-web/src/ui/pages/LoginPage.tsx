@@ -160,7 +160,13 @@ export function LoginPage() {
                 try {
                   const r = await apiRequestRegisterEmailCode(regEmail);
                   const dbg = r.debugCode ? `（debugCode=${r.debugCode}）` : "";
-                  setRegCodeHint(`验证码已发送 ${dbg}`);
+                  if (r.status === "ALREADY_REGISTERED") {
+                    setRegCodeHint("该邮箱已注册，请直接登录或使用找回密码。");
+                  } else if (r.status === "CODE_ALREADY_SENT") {
+                    setRegCodeHint(`验证码已发送，请使用最近一次有效验证码 ${dbg}`);
+                  } else {
+                    setRegCodeHint(`验证码已发送 ${dbg}`);
+                  }
                 } catch (e2) {
                   setError(e2 instanceof Error ? e2.message : String(e2));
                 } finally {
