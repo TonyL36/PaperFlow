@@ -31,6 +31,7 @@
 - 15 演示 Seed + 每日内容升级： [15-content-demo-seed-posts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/15-content-demo-seed-posts.md)
 - 18 收藏与足迹： [18-content-favorites-footprints.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/18-content-favorites-footprints.md)
 - 27 按文章控制评论审核策略： [27-content-post-comment-policy.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/27-content-post-comment-policy.md)
+- 29 统一 AI 对话接口（/api/v1/ai/chat）： [29-content-ai-chat-unified-endpoint.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/29-content-ai-chat-unified-endpoint.md)
 
 ## 4. 文档生成与部署
 
@@ -41,12 +42,20 @@
 - 21 后端数据库设计说明： [21-backend-database-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/21-backend-database-design.md)
 - 23 后端 Pathfinder 模型密钥配置： [23-backend-pathfinder-model-key.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/23-backend-pathfinder-model-key.md)
 - 24 数据库总览与更新操作（H2/PostgreSQL、Flyway/备份/发布）： [24-database-overview-and-ops.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/24-database-overview-and-ops.md)
+- 30 云端部署红线与经验（ECS）： [30-cloud-deploy-guardrails.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/30-cloud-deploy-guardrails.md)
+- 31 Agent 批量论文导入与质量控制： [31-agent-batch-ingest-and-quality.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/31-agent-batch-ingest-and-quality.md)
+- 番外：阿里云 ECS 无构建部署手册： [2026-03-27-ecs-deploy-no-build-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/%E7%95%AA%E5%A4%96/2026-03-27-ecs-deploy-no-build-runbook.md)
+
+## 7. 最新日报
+
+- 2026-04-01：Markdown 渲染修复、中文编码修复、重写回灌与 502 排障： [2026-04-01.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-01.md)
 
 ## 5. 前端（paperflow-web）
 
 - 13 前端 SPA（Notion 风格 + /paperflow 子路径 + 双模式）： [13-frontend-spa.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/13-frontend-spa.md)
 - 16 阅读体验升级（Feed/Detail/块级正文/错误兜底）： [16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)
 - 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径对话）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
+- 28 论文 Agent 传输与高亮协议： [28-paper-agent-protocol-and-highlights.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/28-paper-agent-protocol-and-highlights.md)
 
 ## 6. 项目定义与需求
 
