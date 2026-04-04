@@ -8,7 +8,10 @@ public record CommentResponse(
     String userId,
     String content,
     String status,
+    String parentCommentId,
+    Long likeCount,
+    Boolean liked,
+    java.util.List<CommentResponse> replies,
     OffsetDateTime createdAt
 ) {
 }
-

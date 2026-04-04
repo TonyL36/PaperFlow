@@ -158,7 +158,7 @@ public class PaperIngestController {
   }
 
   private PostResponse toDto(PostEntity p) {
-    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), null, null);
+    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), null, null, null, null);
   }
 
   private String safeRequestId(String requestId) {

@@ -7,6 +7,7 @@ import com.paperflow.content.domain.PostEntity;
 import com.paperflow.content.domain.UserPostKey;
 import com.paperflow.content.repo.PostFavoriteRepository;
 import com.paperflow.content.repo.PostFootprintRepository;
+import com.paperflow.content.repo.PostLikeRepository;
 import com.paperflow.content.repo.PostRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -28,11 +29,13 @@ public class FavoritesController {
   private final PostRepository posts;
   private final PostFavoriteRepository favorites;
   private final PostFootprintRepository footprints;
+  private final PostLikeRepository likes;
 
-  public FavoritesController(PostRepository posts, PostFavoriteRepository favorites, PostFootprintRepository footprints) {
+  public FavoritesController(PostRepository posts, PostFavoriteRepository favorites, PostFootprintRepository footprints, PostLikeRepository likes) {
     this.posts = posts;
     this.favorites = favorites;
     this.footprints = footprints;
+    this.likes = likes;
   }
 
   @PostMapping("/posts/{postId}/favorite")
@@ -87,7 +90,7 @@ public class FavoritesController {
     List<PostResponse> items = favorites.findByIdUserIdOrderByCreatedAtDesc(userId, PageRequest.of(pn - 1, ps)).stream()
         .map(PostFavoriteEntity::getPost)
         .filter(java.util.Objects::nonNull)
-        .map(p -> toDto(p, true, null))
+        .map(p -> toDto(p, userId, true, null))
         .toList();
     long totalItems = favorites.countByIdUserId(userId);
     long totalPages = totalItems == 0 ? 0 : (long) Math.ceil((double) totalItems / ps);
@@ -115,7 +118,7 @@ public class FavoritesController {
     int pn = Math.max(1, pageNumber);
     int ps = Math.min(200, Math.max(1, pageSize));
     List<PostResponse> items = footprints.findByIdUserIdOrderByLastViewedAtDesc(userId, PageRequest.of(pn - 1, ps)).stream()
-        .map(fp -> toDto(fp.getPost(), null, fp.getLastViewedAt()))
+        .map(fp -> toDto(fp.getPost(), userId, null, fp.getLastViewedAt()))
         .filter(java.util.Objects::nonNull)
         .toList();
     long totalItems = footprints.countByIdUserId(userId);
@@ -131,11 +134,23 @@ public class FavoritesController {
     ));
   }
 
-  private PostResponse toDto(PostEntity p, Boolean favorited, OffsetDateTime lastViewedAt) {
+  private PostResponse toDto(PostEntity p, String userId, Boolean favorited, OffsetDateTime lastViewedAt) {
     if (p == null) {
       return null;
     }
-    return new PostResponse(p.getId(), p.getTitle(), p.getContent(), p.getSource(), p.getPublishedAt(), p.getCommentModerationEnabled(), favorited, lastViewedAt);
+    Boolean liked = userId == null || userId.isBlank() ? null : likes.existsByIdUserIdAndIdPostId(userId, p.getId());
+    return new PostResponse(
+        p.getId(),
+        p.getTitle(),
+        p.getContent(),
+        p.getSource(),
+        p.getPublishedAt(),
+        p.getCommentModerationEnabled(),
+        likes.countByIdPostId(p.getId()),
+        liked,
+        favorited,
+        lastViewedAt
+    );
   }
 
   private String safeRequestId(String requestId) {

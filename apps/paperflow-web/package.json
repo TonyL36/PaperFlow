@@ -8,7 +8,10 @@
     "dev:mock": "concurrently -n mock,vite -c \"cyan,magenta\" \"npm run mock:api\" \"cross-env VITE_API_BASE=http://localhost:3151 vite\"",
     "build": "vite build",
     "preview": "vite preview",
-    "mock:api": "cross-env PORT=3151 node ./mock/server.mjs"
+    "mock:api": "cross-env PORT=3151 node ./mock/server.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "cors": "2.8.5",
@@ -29,6 +32,7 @@
     "concurrently": "9.1.0",
     "cross-env": "7.0.3",
     "typescript": "5.6.3",
-    "vite": "5.4.11"
+    "vite": "5.4.11",
+    "vitest": "2.1.9"
   }
 }

@@ -2,6 +2,7 @@ import { httpJson } from "./http";
 import type {
   AdminUser,
   Comment,
+  CommentUserCard,
   MailTemplateSettings,
   Paged,
   PaperFormat,
@@ -206,6 +207,14 @@ export async function apiGetPost(postId: string, accessToken?: string, signal?: 
   return normalizePostPaperProtocol(post);
 }
 
+export async function apiLikePost(accessToken: string, postId: string): Promise<void> {
+  await httpJson<Record<string, never>>(`/api/v1/posts/${encodeURIComponent(postId)}/like`, { method: "POST", accessToken, body: JSON.stringify({}) });
+}
+
+export async function apiUnlikePost(accessToken: string, postId: string): Promise<void> {
+  await httpJson<Record<string, never>>(`/api/v1/posts/${encodeURIComponent(postId)}/like`, { method: "DELETE", accessToken });
+}
+
 export async function apiFavoritePost(accessToken: string, postId: string): Promise<void> {
   await httpJson<Record<string, never>>(`/api/v1/posts/${encodeURIComponent(postId)}/favorite`, { method: "POST", accessToken, body: JSON.stringify({}) });
 }
@@ -222,19 +231,37 @@ export async function apiListFootprints(pageNumber: number, pageSize: number, ac
   return httpJson<Paged<Post>>(`/api/v1/footprints?page[number]=${pageNumber}&page[size]=${pageSize}`, { method: "GET", accessToken, signal });
 }
 
-export async function apiListComments(postId: string, pageNumber: number, pageSize: number, signal?: AbortSignal): Promise<Paged<Comment>> {
+export async function apiListComments(
+  postId: string,
+  pageNumber: number,
+  pageSize: number,
+  accessToken?: string,
+  signal?: AbortSignal
+): Promise<Paged<Comment>> {
   return httpJson<Paged<Comment>>(
     `/api/v1/comments?postId=${encodeURIComponent(postId)}&page[number]=${pageNumber}&page[size]=${pageSize}`,
-    { method: "GET", signal }
+    { method: "GET", accessToken, signal }
   );
 }
 
-export async function apiCreateComment(accessToken: string, postId: string, content: string): Promise<Comment> {
+export async function apiCreateComment(accessToken: string, postId: string, content: string, parentCommentId?: string): Promise<Comment> {
   return httpJson<Comment>("/api/v1/comments", {
     method: "POST",
     accessToken,
-    body: JSON.stringify({ postId, content })
+    body: JSON.stringify({ postId, content, parentCommentId: parentCommentId || undefined })
   });
+}
+
+export async function apiLikeComment(accessToken: string, commentId: string): Promise<void> {
+  await httpJson<Record<string, never>>(`/api/v1/comments/${encodeURIComponent(commentId)}/like`, { method: "POST", accessToken, body: JSON.stringify({}) });
+}
+
+export async function apiUnlikeComment(accessToken: string, commentId: string): Promise<void> {
+  await httpJson<Record<string, never>>(`/api/v1/comments/${encodeURIComponent(commentId)}/like`, { method: "DELETE", accessToken });
+}
+
+export async function apiGetCommentUserCard(userId: string, signal?: AbortSignal): Promise<CommentUserCard> {
+  return httpJson<CommentUserCard>(`/api/v1/comments/users/${encodeURIComponent(userId)}/card`, { method: "GET", signal });
 }
 
 export async function apiAdminListComments(

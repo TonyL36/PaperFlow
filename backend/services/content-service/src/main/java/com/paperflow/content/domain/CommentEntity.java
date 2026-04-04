@@ -25,6 +25,9 @@ public class CommentEntity {
   @Column(name = "status", nullable = false, length = 32)
   private String status;
 
+  @Column(name = "parent_comment_id", length = 64)
+  private String parentCommentId;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -68,6 +71,14 @@ public class CommentEntity {
     this.status = status;
   }
 
+  public String getParentCommentId() {
+    return parentCommentId;
+  }
+
+  public void setParentCommentId(String parentCommentId) {
+    this.parentCommentId = parentCommentId;
+  }
+
   public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
@@ -76,4 +87,3 @@ public class CommentEntity {
     this.createdAt = createdAt;
   }
 }
-

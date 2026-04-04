@@ -43,6 +43,8 @@ export type Post = {
   content: string;
   source: string;
   publishedAt: string;
+  likeCount?: number | null;
+  liked?: boolean | null;
   formats?: PaperFormat[] | null;
   defaultFormat?: PaperFormatType | null;
   highlights?: PaperHighlight[] | null;
@@ -57,7 +59,18 @@ export type Comment = {
   userId: string;
   content: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  parentCommentId?: string | null;
+  likeCount?: number | null;
+  liked?: boolean | null;
+  replies?: Comment[] | null;
   createdAt: string;
+};
+
+export type CommentUserCard = {
+  userId: string;
+  displayName: string;
+  postCount: number;
+  receivedLikeCount: number;
 };
 
 export type Paged<T> = {

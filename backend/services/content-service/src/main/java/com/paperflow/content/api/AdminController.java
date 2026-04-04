@@ -119,7 +119,18 @@ public class AdminController {
   }
 
   private CommentResponse toDto(CommentEntity c) {
-    return new CommentResponse(c.getId(), c.getPostId(), c.getUserId(), c.getContent(), c.getStatus(), c.getCreatedAt());
+    return new CommentResponse(
+        c.getId(),
+        c.getPostId(),
+        c.getUserId(),
+        c.getContent(),
+        c.getStatus(),
+        c.getParentCommentId(),
+        null,
+        null,
+        List.of(),
+        c.getCreatedAt()
+    );
   }
 
   private String safeRequestId(String requestId) {

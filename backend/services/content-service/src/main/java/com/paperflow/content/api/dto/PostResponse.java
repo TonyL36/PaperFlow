@@ -9,6 +9,8 @@ public record PostResponse(
     String source,
     OffsetDateTime publishedAt,
     Boolean commentModerationEnabled,
+    Long likeCount,
+    Boolean liked,
     Boolean favorited,
     OffsetDateTime lastViewedAt
 ) {

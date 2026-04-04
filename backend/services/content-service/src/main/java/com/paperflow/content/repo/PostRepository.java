@@ -14,4 +14,6 @@ public interface PostRepository extends JpaRepository<PostEntity, String> {
   boolean existsByPublishedAtBetween(OffsetDateTime start, OffsetDateTime end);
 
   boolean existsBySourceAndPublishedAtBetween(String source, OffsetDateTime start, OffsetDateTime end);
+
+  long countByAuthorUserId(String authorUserId);
 }

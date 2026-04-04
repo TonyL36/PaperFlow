@@ -52,6 +52,8 @@
 - 37 医疗论文每日定时更新技术文档： [37-medical-daily-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/37-medical-daily-technical-design.md)
 - 38 网络安全/大数据每日更新使用说明： [38-topic-daily-cyber-bigdata-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/38-topic-daily-cyber-bigdata-runbook.md)
 - 39 网络安全/大数据每日更新技术文档： [39-topic-daily-cyber-bigdata-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/39-topic-daily-cyber-bigdata-technical-design.md)
+- 40 scheduler 模板帖治理技术文档： [40-daily-post-governance-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/40-daily-post-governance-technical-design.md)
+- 41 论坛点赞与子评论技术文档： [41-forum-likes-threaded-comments-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/41-forum-likes-threaded-comments-technical-design.md)
 - 番外：阿里云 ECS 无构建部署手册： [2026-03-27-ecs-deploy-no-build-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/%E7%95%AA%E5%A4%96/2026-03-27-ecs-deploy-no-build-runbook.md)
 
 ## 7. 最新日报
