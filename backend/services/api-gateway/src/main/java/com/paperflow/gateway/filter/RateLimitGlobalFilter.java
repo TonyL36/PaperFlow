@@ -36,7 +36,8 @@ public final class RateLimitGlobalFilter implements GlobalFilter, Ordered {
     boolean isAuth = path.startsWith("/api/v1/auth/");
     boolean isPublic = method == HttpMethod.GET && (
         path.equals("/api/v1/posts") || path.startsWith("/api/v1/posts/") ||
-        path.equals("/api/v1/comments") || path.startsWith("/api/v1/comments/")
+        path.equals("/api/v1/comments") || path.startsWith("/api/v1/comments/") ||
+        path.startsWith("/api/v1/public/papers/")
     );
 
     String userId = (String) exchange.getAttributes().get(ATTR_USER_ID);

@@ -12,5 +12,6 @@ public interface PostRepository extends JpaRepository<PostEntity, String> {
   List<PostEntity> listRecent(Pageable pageable);
 
   boolean existsByPublishedAtBetween(OffsetDateTime start, OffsetDateTime end);
-}
 
+  boolean existsBySourceAndPublishedAtBetween(String source, OffsetDateTime start, OffsetDateTime end);
+}

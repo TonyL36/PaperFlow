@@ -48,7 +48,8 @@ public final class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
     boolean isPublic = method == HttpMethod.GET && (
         path.equals("/api/v1/posts") || path.startsWith("/api/v1/posts/") ||
         path.equals("/api/v1/comments") || path.startsWith("/api/v1/comments/") ||
-        path.startsWith("/api/v1/public/users/avatars/")
+        path.startsWith("/api/v1/public/users/avatars/") ||
+        path.startsWith("/api/v1/public/papers/")
     );
     String auth = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
     boolean hasBearer = auth != null && !auth.isBlank() && auth.startsWith("Bearer ");

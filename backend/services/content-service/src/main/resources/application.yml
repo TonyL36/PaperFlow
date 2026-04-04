@@ -20,6 +20,10 @@ spring:
     enabled: true
 
 paperflow:
+  daily-post:
+    enabled: ${PF_DAILY_POST_ENABLED:false}
+  papers:
+    cache-dir: ${PF_PAPERS_CACHE_DIR:/var/lib/paperflow/pdf-cache}
   pathfinder:
     ai:
       endpoint: ${PF_PATHFINDER_AI_ENDPOINT:https://open.bigmodel.cn/api/paas/v4/chat/completions}

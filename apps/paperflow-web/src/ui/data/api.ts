@@ -1,8 +1,152 @@
 import { httpJson } from "./http";
-import type { AdminUser, Comment, MailTemplateSettings, Paged, PathfinderModel, PathfinderSession, PathfinderStage, Post, UserProfile } from "./types";
+import type {
+  AdminUser,
+  Comment,
+  MailTemplateSettings,
+  Paged,
+  PaperFormat,
+  PaperFormatType,
+  PaperHighlight,
+  PaperHighlightAnchor,
+  PaperHighlightLevel,
+  PathfinderModel,
+  PathfinderSession,
+  PathfinderStage,
+  Post,
+  UserProfile
+} from "./types";
 
 type LoginReq = { email: string; password: string };
 type AuthResp = { accessToken: string };
+type UnknownRecord = Record<string, unknown>;
+const PAPER_FORMAT_SET: ReadonlySet<PaperFormatType> = new Set(["pdf", "html", "markdown"]);
+const HIGHLIGHT_LEVEL_SET: ReadonlySet<PaperHighlightLevel> = new Set(["claim", "evidence", "method", "risk"]);
+
+function asRecord(value: unknown): UnknownRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as UnknownRecord;
+}
+
+function normalizePaperFormatType(value: unknown): PaperFormatType | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (!PAPER_FORMAT_SET.has(normalized as PaperFormatType)) {
+    return null;
+  }
+  return normalized as PaperFormatType;
+}
+
+function normalizeHighlightLevel(value: unknown): PaperHighlightLevel {
+  if (typeof value !== "string") return "method";
+  const normalized = value.trim().toLowerCase();
+  if (!HIGHLIGHT_LEVEL_SET.has(normalized as PaperHighlightLevel)) {
+    return "method";
+  }
+  return normalized as PaperHighlightLevel;
+}
+
+function normalizeBbox(value: unknown): [number, number, number, number] | null {
+  if (!Array.isArray(value) || value.length !== 4) {
+    return null;
+  }
+  const nums = value.map((it) => (typeof it === "number" ? it : Number.NaN));
+  if (nums.some((it) => !Number.isFinite(it))) {
+    return null;
+  }
+  return [nums[0], nums[1], nums[2], nums[3]];
+}
+
+function normalizeAnchor(value: unknown): PaperHighlightAnchor | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const format = normalizePaperFormatType(record.format);
+  if (!format) return null;
+  const pageRaw = record.page;
+  const quote = typeof record.quote === "string" ? record.quote : null;
+  const selector = typeof record.selector === "string" ? record.selector : null;
+  const page = typeof pageRaw === "number" && Number.isFinite(pageRaw) ? pageRaw : null;
+  const bbox = normalizeBbox(record.bbox);
+  return { format, page, bbox, quote, selector };
+}
+
+function normalizePaperFormat(value: unknown): PaperFormat | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const type = normalizePaperFormatType(record.type);
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  if (!type || !url) return null;
+  const sha256 = typeof record.sha256 === "string" ? record.sha256 : null;
+  return { type, url, sha256 };
+}
+
+function normalizePaperHighlight(value: unknown, index: number): PaperHighlight | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const snippet = typeof record.snippet === "string" ? record.snippet.trim() : "";
+  if (!snippet) return null;
+  const highlightIdRaw = record.highlightId ?? record.id;
+  const highlightId = typeof highlightIdRaw === "string" && highlightIdRaw.trim() ? highlightIdRaw : `h_${index + 1}`;
+  const titleRaw = record.title;
+  const title = typeof titleRaw === "string" && titleRaw.trim() ? titleRaw : `重点 ${index + 1}`;
+  return {
+    highlightId,
+    level: normalizeHighlightLevel(record.level),
+    title,
+    snippet,
+    anchor: normalizeAnchor(record.anchor)
+  };
+}
+
+function extractFormatsFromContent(content: string): PaperFormat[] {
+  if (!content) return [];
+  const lines = content.split(/\r?\n/);
+  const result: PaperFormat[] = [];
+  let inFormats = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!inFormats) {
+      if (/^##\s+formats\b/i.test(line)) {
+        inFormats = true;
+      }
+      continue;
+    }
+    if (/^##\s+/.test(line)) {
+      break;
+    }
+    const match = line.match(/^-\s*([A-Za-z]+)\s*:\s*(\S+)\s*$/);
+    if (!match) continue;
+    const type = normalizePaperFormatType(match[1]);
+    const url = match[2]?.trim();
+    if (!type || !url) continue;
+    result.push({ type, url, sha256: null });
+  }
+  return result;
+}
+
+function normalizePostPaperProtocol(post: Post): Post {
+  const record = post as Post & UnknownRecord;
+  const rawFormats = Array.isArray(record.formats) ? record.formats : Array.isArray(record.paperFormats) ? record.paperFormats : null;
+  const rawHighlights = Array.isArray(record.highlights) ? record.highlights : null;
+  const rawDefaultFormat = record.defaultFormat ?? record.default_format;
+  if (!rawFormats && !rawHighlights && rawDefaultFormat == null) {
+    const inferredFormats = extractFormatsFromContent(post.content ?? "");
+    if (!inferredFormats.length) return post;
+    return { ...post, formats: inferredFormats };
+  }
+  const formatsFromPayload = (rawFormats ?? []).map((it) => normalizePaperFormat(it)).filter((it): it is PaperFormat => !!it);
+  const inferredFormats = formatsFromPayload.length ? [] : extractFormatsFromContent(post.content ?? "");
+  const formats = formatsFromPayload.length ? formatsFromPayload : inferredFormats;
+  const highlights = (rawHighlights ?? []).map((it, idx) => normalizePaperHighlight(it, idx)).filter((it): it is PaperHighlight => !!it);
+  const defaultFormat = normalizePaperFormatType(rawDefaultFormat) ?? null;
+  return {
+    ...post,
+    formats,
+    highlights,
+    defaultFormat
+  };
+}
 
 export async function apiLogin(req: LoginReq): Promise<string> {
   const data = await httpJson<AuthResp>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(req) });
@@ -50,11 +194,16 @@ export async function apiUploadMyAvatar(accessToken: string, file: File): Promis
 }
 
 export async function apiListPosts(pageNumber: number, pageSize: number, signal?: AbortSignal): Promise<Paged<Post>> {
-  return httpJson<Paged<Post>>(`/api/v1/posts?page[number]=${pageNumber}&page[size]=${pageSize}`, { method: "GET", signal });
+  const data = await httpJson<Paged<Post>>(`/api/v1/posts?page[number]=${pageNumber}&page[size]=${pageSize}`, { method: "GET", signal });
+  return {
+    ...data,
+    items: data.items.map((it) => normalizePostPaperProtocol(it))
+  };
 }
 
 export async function apiGetPost(postId: string, accessToken?: string, signal?: AbortSignal): Promise<Post> {
-  return httpJson<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`, { method: "GET", accessToken, signal });
+  const post = await httpJson<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`, { method: "GET", accessToken, signal });
+  return normalizePostPaperProtocol(post);
 }
 
 export async function apiFavoritePost(accessToken: string, postId: string): Promise<void> {
@@ -202,6 +351,17 @@ type PathfinderGenerateResponse = {
   assistantMessage: string;
 };
 
+type AiChatPayload = {
+  model: PathfinderModel;
+  systemPrompt: string;
+  userPrompt: string;
+};
+
+type AiChatResponse = {
+  model: PathfinderModel;
+  assistantMessage: string;
+};
+
 export async function apiListPathfinderSessions(
   accessToken: string,
   pageNumber: number,
@@ -234,6 +394,19 @@ export async function apiGeneratePathfinderPlan(
   return httpJson<PathfinderGenerateResponse>("/api/v1/pathfinder/sessions/plan", {
     method: "POST",
     accessToken,
+    timeoutMs: 90000,
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function apiAiChat(
+  accessToken: string,
+  payload: AiChatPayload
+): Promise<AiChatResponse> {
+  return httpJson<AiChatResponse>("/api/v1/ai/chat", {
+    method: "POST",
+    accessToken,
+    timeoutMs: 90000,
     body: JSON.stringify(payload)
   });
 }

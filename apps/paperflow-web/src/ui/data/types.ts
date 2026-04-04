@@ -11,12 +11,41 @@ export type EnvelopeErr = {
 
 export type Envelope<T> = EnvelopeOk<T> | EnvelopeErr;
 
+export type PaperFormatType = "pdf" | "html" | "markdown";
+
+export type PaperHighlightLevel = "claim" | "evidence" | "risk" | "method";
+
+export type PaperFormat = {
+  type: PaperFormatType;
+  url: string;
+  sha256?: string | null;
+};
+
+export type PaperHighlightAnchor = {
+  format: PaperFormatType;
+  page?: number | null;
+  bbox?: [number, number, number, number] | null;
+  quote?: string | null;
+  selector?: string | null;
+};
+
+export type PaperHighlight = {
+  highlightId: string;
+  level: PaperHighlightLevel;
+  title: string;
+  snippet: string;
+  anchor?: PaperHighlightAnchor | null;
+};
+
 export type Post = {
   postId: string;
   title: string;
   content: string;
   source: string;
   publishedAt: string;
+  formats?: PaperFormat[] | null;
+  defaultFormat?: PaperFormatType | null;
+  highlights?: PaperHighlight[] | null;
   commentModerationEnabled?: boolean | null;
   favorited?: boolean | null;
   lastViewedAt?: string | null;

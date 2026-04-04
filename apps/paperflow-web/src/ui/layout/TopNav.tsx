@@ -2,6 +2,17 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 
+function NavTile({ icon, label }: { icon: string; label: string }) {
+  return (
+    <span className="pf-navtile">
+      <span className="pf-navtile__icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="pf-navtile__label">{label}</span>
+    </span>
+  );
+}
+
 export function TopNav() {
   const auth = useAuth();
   const isAdmin = auth.state.status === "authenticated" ? auth.state.roles.includes("ADMIN") : false;
@@ -12,13 +23,13 @@ export function TopNav() {
           PaperFlow
         </Link>
         <NavLink to="/posts" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
-          📰 Feed
+          <NavTile icon="📰" label="Feed" />
         </NavLink>
         <NavLink to="/viz" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
-          🧭 Viz
+          <NavTile icon="🧭" label="Viz" />
         </NavLink>
         <NavLink to="/pathfinder" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
-          🗺️ Pathfinder
+          <NavTile icon="🗺️" label="Pathfinder" />
         </NavLink>
         {auth.state.status === "authenticated" ? (
           <>
@@ -26,13 +37,13 @@ export function TopNav() {
               to="/favorites"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              Favorites
+              <NavTile icon="⭐" label="Favorites" />
             </NavLink>
             <NavLink
               to="/footprints"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              Footprints
+              <NavTile icon="👣" label="Footprints" />
             </NavLink>
           </>
         ) : null}
@@ -42,25 +53,25 @@ export function TopNav() {
               to="/admin/users"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              🧑‍⚖️ Users
+              <NavTile icon="🧑‍⚖️" label="Users" />
             </NavLink>
             <NavLink
               to="/admin/comments"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              🛡️ Comment Review
+              <NavTile icon="🛡️" label="Comment Review" />
             </NavLink>
             <NavLink
               to="/admin/posts/moderation"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              🧩 Post Policy
+              <NavTile icon="🧩" label="Post Policy" />
             </NavLink>
             <NavLink
               to="/admin/settings/mail"
               className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
             >
-              ✉️ Mail
+              <NavTile icon="✉️" label="Mail" />
             </NavLink>
           </>
         ) : null}
@@ -81,7 +92,7 @@ export function TopNav() {
           </div>
         ) : (
           <NavLink to="/login" className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}>
-            Sign in
+            <NavTile icon="🔐" label="Sign in" />
           </NavLink>
         )}
       </div>

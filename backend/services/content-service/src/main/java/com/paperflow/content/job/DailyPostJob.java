@@ -6,12 +6,14 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(prefix = "paperflow.daily-post", name = "enabled", havingValue = "true")
 public class DailyPostJob {
   private final PostRepository posts;
 
@@ -29,7 +31,7 @@ public class DailyPostJob {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     OffsetDateTime start = now.truncatedTo(ChronoUnit.DAYS);
     OffsetDateTime end = start.plusDays(1);
-    if (posts.existsByPublishedAtBetween(start, end)) {
+    if (posts.existsBySourceAndPublishedAtBetween("scheduler", start, end)) {
       return;
     }
     PostEntity p = new PostEntity();

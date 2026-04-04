@@ -44,11 +44,21 @@
 - 24 数据库总览与更新操作（H2/PostgreSQL、Flyway/备份/发布）： [24-database-overview-and-ops.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/24-database-overview-and-ops.md)
 - 30 云端部署红线与经验（ECS）： [30-cloud-deploy-guardrails.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/30-cloud-deploy-guardrails.md)
 - 31 Agent 批量论文导入与质量控制： [31-agent-batch-ingest-and-quality.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/31-agent-batch-ingest-and-quality.md)
+- 32 医疗论文去重上传使用说明（可重复执行）： [32-medical-ingest-usage-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/32-medical-ingest-usage-runbook.md)
+- 33 医疗论文去重上传技术文档： [33-medical-ingest-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/33-medical-ingest-technical-design.md)
+- 34 多领域论文每日定时导入使用说明（已停用）： [34-openalex-daily-usage-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/34-openalex-daily-usage-runbook.md)
+- 35 多领域论文每日定时导入技术文档（已停用）： [35-openalex-daily-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/35-openalex-daily-technical-design.md)
+- 36 医疗论文每日定时更新使用说明（昨晚脚本链路）： [36-medical-daily-usage-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/36-medical-daily-usage-runbook.md)
+- 37 医疗论文每日定时更新技术文档： [37-medical-daily-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/37-medical-daily-technical-design.md)
+- 38 网络安全/大数据每日更新使用说明： [38-topic-daily-cyber-bigdata-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/38-topic-daily-cyber-bigdata-runbook.md)
+- 39 网络安全/大数据每日更新技术文档： [39-topic-daily-cyber-bigdata-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/39-topic-daily-cyber-bigdata-technical-design.md)
 - 番外：阿里云 ECS 无构建部署手册： [2026-03-27-ecs-deploy-no-build-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/%E7%95%AA%E5%A4%96/2026-03-27-ecs-deploy-no-build-runbook.md)
 
 ## 7. 最新日报
 
+- 周报索引（近三周）： [weekly/00-index.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/weekly/00-index.md)
 - 2026-04-01：Markdown 渲染修复、中文编码修复、重写回灌与 502 排障： [2026-04-01.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-01.md)
+- 2026-04-04：scheduler 模板帖治理、topic 板块扩展与云端定时配置： [2026-04-04.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-04.md)
 
 ## 5. 前端（paperflow-web）
 

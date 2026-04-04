@@ -8,6 +8,7 @@
   - user-service
   - content-service
   - api-gateway（对外入口）
+  - frontend（Nginx 托管 SPA + `/api` 反代网关）
 - 通过 `.env` 注入环境变量，避免改动 compose 文件
 
 ## 目录结构
@@ -26,6 +27,9 @@
   - [Dockerfile.api-gateway](file:///f:/Gitee/PaperFlow/PaperFlow/docker/Dockerfile.api-gateway)
   - [Dockerfile.user-service](file:///f:/Gitee/PaperFlow/PaperFlow/docker/Dockerfile.user-service)
   - [Dockerfile.content-service](file:///f:/Gitee/PaperFlow/PaperFlow/docker/Dockerfile.content-service)
+  - [Dockerfile.frontend](file:///f:/Gitee/PaperFlow/PaperFlow/docker/Dockerfile.frontend)
+- Nginx 路由：
+  - [paperflow.conf](file:///f:/Gitee/PaperFlow/PaperFlow/docker/nginx/paperflow.conf)
 
 ## 关键代码原文 + 解读
 
@@ -97,6 +101,71 @@ services:
   - 对外只暴露网关端口
   - 通过 `USER_SERVICE_URL/CONTENT_SERVICE_URL` 配置上游路由
 
+### 12.3 云端前端编排与访问
+
+- `frontend` 容器通过 Nginx 托管 `apps/paperflow-web/dist`
+- SPA 基础路径为 `/paperflow/`，静态资源路径为 `/paperflow/assets/*`
+- `location /api/` 反代到 `api-gateway:8080`，前端与后端同源访问
+- 云端默认入口：
+  - `http://<ECS_IP>:9628/paperflow/posts`
+  - `http://<ECS_IP>:9628/api/v1/posts?page[number]=1&page[size]=1`
+
+### 12.4 云端验证码开关核验（user-service）
+
+- 核验配置文件值：
+
+```bash
+grep -n "^PF_MAIL_ENABLED=" /opt/paperflow/docker/env/prod.env
+```
+
+- 核验容器实际值：
+
+```bash
+cd /opt/paperflow
+docker compose --env-file docker/env/prod.env -f docker/compose.prod.yml exec -T user-service printenv PF_MAIL_ENABLED
+```
+
+### 12.5 云端服务重启顺序与窗口期
+
+- 现象：网关偶发 `SYS_INTERNAL_ERROR`，日志显示 `Connection refused: content-service:8082`
+- 原因：`content-service` 重启窗口期，网关先转发到未就绪下游
+- 推荐顺序：
+
+```bash
+cd /opt/paperflow
+docker compose --env-file docker/env/prod.env -f docker/compose.prod.yml restart content-service
+sleep 10
+docker compose --env-file docker/env/prod.env -f docker/compose.prod.yml restart api-gateway
+```
+
+- 验证：
+
+```bash
+curl -i http://127.0.0.1:3151/actuator/health
+curl -g -i "http://127.0.0.1:3151/api/v1/posts?page[number]=1&page[size]=1"
+```
+
+### 12.6 前端可见性与发布时间策略
+
+- 批量导入真实论文时，若保留论文原始 `publishedAt`，前台首页可能不在首屏显示
+- 验收阶段建议使用“当前发布时间”策略，确保新导入文章置顶
+- 脚本参数：
+  - `mock-agent-paper-ingest-openalex.ps1 -PublishNow`
+- API 验证建议：
+
+```bash
+curl -g "http://127.0.0.1:3151/api/v1/posts?page[number]=1&page[size]=200"
+```
+
+- 若文件与容器不一致，使用显式环境值重建（避免会话覆盖）：
+
+```bash
+cd /opt/paperflow
+unset PF_MAIL_ENABLED
+PF_MAIL_ENABLED=true docker compose --env-file docker/env/prod.env -f docker/compose.prod.yml up -d --force-recreate user-service
+docker compose --env-file docker/env/prod.env -f docker/compose.prod.yml exec -T user-service printenv PF_MAIL_ENABLED
+```
+
 ### 12.2 一键启动脚本（Windows）
 
 代码位置：[deploy.ps1](file:///f:/Gitee/PaperFlow/PaperFlow/scripts/deploy.ps1)
@@ -139,4 +208,4 @@ try {
 - prod：把镜像构建从 compose 移到 CI，compose 只做拉取与运行
 - 增加反向代理（Nginx/Caddy）承载 TLS、静态资源与 gzip
 - 增加观测栈（Prometheus/Grafana/OTEL）
-
+- 为前端构建增加产物断言（`dist/index.html`）与失败重试，避免“构建卡住但无产物”

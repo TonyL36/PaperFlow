@@ -20,11 +20,12 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary";
 export function App() {
   const loc = useLocation();
   const isLogin = loc.pathname === "/login";
-  const isWidePage = loc.pathname.startsWith("/pathfinder");
+  const isPaperPage = loc.pathname.startsWith("/papers/");
+  const isWidePage = loc.pathname.startsWith("/pathfinder") || loc.pathname.startsWith("/papers/");
   return (
     <div className="pf-app">
       {isLogin ? null : <TopNav />}
-      <div className={isLogin ? undefined : ["pf-container", isWidePage ? "pf-container--wide" : null].filter(Boolean).join(" ")}>
+      <div className={isLogin ? undefined : ["pf-container", isWidePage ? "pf-container--wide" : null, isPaperPage ? "pf-container--paper" : null].filter(Boolean).join(" ")}>
         <AppErrorBoundary>
           <Routes>
             <Route path="/" element={<Navigate to="/posts" replace />} />

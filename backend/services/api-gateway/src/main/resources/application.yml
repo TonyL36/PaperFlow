@@ -29,10 +29,18 @@ spring:
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/v1/posts,/api/v1/posts/**
+        - id: content-papers
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/papers,/api/v1/papers/**
         - id: content-comments
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/v1/comments,/api/v1/comments/**
+        - id: content-public-papers
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/public/papers,/api/v1/public/papers/**
         - id: content-engagement
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
@@ -41,6 +49,14 @@ spring:
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/v1/pathfinder/sessions,/api/v1/pathfinder/sessions/**
+        - id: content-ai
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/ai,/api/v1/ai/**
+        - id: content-internal-agent
+          uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/internal/agent,/api/v1/internal/agent/**
         - id: content-admin
           uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
           predicates:

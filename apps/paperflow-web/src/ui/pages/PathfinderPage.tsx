@@ -257,6 +257,7 @@ export function PathfinderPage() {
     if (!plan) return;
     setActiveStageId(stageId);
     syncPathStage(plan, stageId);
+    void persistSession(plan, messages, stageId);
     const now = Date.now();
     const fallback = `已切换到「${stageTitleById(plan.stages, stageId)}」，当前状态：${stageStatusLabel[stageById(plan.stages, stageId)?.status ?? "locked"]}。`;
     const prompt = [
@@ -292,6 +293,7 @@ export function PathfinderPage() {
     setPlan(nextPlan);
     setActiveStageId(nextActiveStageId);
     syncPathStage(nextPlan, nextActiveStageId);
+    void persistSession(nextPlan, messages, nextActiveStageId);
     const fallback = `${reading.done ? "已撤销" : "已完成"}「${reading.title}」。阅读进度 ${nextProgress.doneReadings}/${nextProgress.totalReadings}，关卡进度 ${nextProgress.doneStages}/${nextProgress.totalStages}。`;
     const prompt = [
       "你是 Pathfinder 学习助手，请根据最新进度给出一句下一步建议。",

@@ -36,7 +36,7 @@ if errorlevel 1 set PSH=powershell
 %PSH% -NoProfile -ExecutionPolicy Bypass -File "%ROOT%dev.ps1" %ACTION% %SKIPBUILD% -GatewayPort %PF_GATEWAY_PORT% -UserServicePort %PF_USER_PORT% -ContentServicePort %PF_CONTENT_PORT% -SpaPort %PF_SPA_PORT% -DemoIngestToken "%PF_DEMO_INGEST_TOKEN%" %EXTRA_ARGS%
 set EXITCODE=%ERRORLEVEL%
 if /I "%ACTION%"=="up" if "%OPEN_AFTER_START%"=="1" if "%EXITCODE%"=="0" (
-  start "" "http://localhost:%PF_SPA_PORT%/paperflow/"
+  start "" "http://localhost:%PF_SPA_PORT%/paperflow/posts"
   start "" "http://localhost:%PF_GATEWAY_PORT%/api/v1/posts?page[number]=1&page[size]=1"
 )
 endlocal

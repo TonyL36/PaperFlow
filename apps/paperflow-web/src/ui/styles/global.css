@@ -87,8 +87,23 @@ button:disabled{
 }
 .pf-navlink{
   color: var(--pf-text-2);
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: 8px;
+}
+.pf-navtile{
+  display: inline-grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 58px;
+  line-height: 1.1;
+}
+.pf-navtile__icon{
+  font-size: 15px;
+}
+.pf-navtile__label{
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .pf-navlink:hover{
   background: rgba(55, 53, 47, 0.06);
@@ -117,6 +132,12 @@ button:disabled{
 }
 .pf-container--wide{
   max-width: 1360px;
+}
+.pf-container--paper{
+  max-width: none;
+  width: 100%;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 .pf-page{
   display: grid;
@@ -217,7 +238,8 @@ button:disabled{
   display: grid;
   gap: 8px;
   max-height: 520px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px 2px;
 }
 .pf-ai-chatmsg{
@@ -226,6 +248,9 @@ button:disabled{
   white-space: pre-wrap;
   line-height: 1.7;
   border: 1px solid var(--pf-border);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .pf-ai-chatmsg--assistant{
   background: var(--pf-surface-2);
@@ -274,11 +299,15 @@ button:disabled{
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
+  max-width: 100%;
+  overflow: hidden;
 }
 .pf-ai-refdock{
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
 }
 .pf-ai-refchip{
   display: inline-flex;
@@ -291,6 +320,11 @@ button:disabled{
   font-size: 12px;
   line-height: 1.4;
   padding: 3px 9px;
+  max-width: min(100%, 240px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pf-ai-refchip__remove{
   border: 0;
@@ -321,6 +355,12 @@ button:disabled{
   .pf-topnav__inner{
     flex-wrap: wrap;
     row-gap: 8px;
+  }
+  .pf-navtile{
+    min-width: 52px;
+  }
+  .pf-navtile__label{
+    font-size: 10px;
   }
   .pf-container{
     padding: 14px 12px 22px;
@@ -549,11 +589,14 @@ button:disabled{
 .pf-pdf-main{
   padding: 12px;
   min-width: 0;
+  min-height: calc(100vh - 86px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
 }
 .pf-pdf-header{
   display: grid;
   gap: 6px;
-  margin-bottom: 10px;
 }
 .pf-pdf-frame{
   width: 100%;
@@ -561,6 +604,357 @@ button:disabled{
   border: 1px solid var(--pf-border);
   border-radius: 10px;
   background: #ffffff;
+}
+.pf-pdf-reader-surface{
+  border-radius: 14px;
+  border: 1px solid rgba(55, 53, 47, 0.1);
+  background: linear-gradient(180deg, rgba(55, 53, 47, 0.03), rgba(55, 53, 47, 0.01));
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+}
+.pf-pdf-reader-surface__bar{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pf-pdf-canvas-wrap{
+  position: relative;
+  min-height: 72vh;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(55, 53, 47, 0.12);
+  background: rgba(245, 246, 248, 0.88);
+  padding: 10px;
+}
+.pf-pdf-main-stream{
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+.pf-pdf-main-page{
+  width: fit-content;
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+.pf-pdf-main-skeleton{
+  width: min(920px, 90%);
+  height: 68vh;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(220, 220, 220, 0.55), rgba(245, 245, 245, 0.9), rgba(220, 220, 220, 0.55));
+  background-size: 200% 100%;
+  animation: pf-skeleton-shimmer 1.2s linear infinite;
+}
+.pf-pdf-main-canvas{
+  display: block;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 16px rgba(15, 15, 15, 0.08);
+  max-width: 100%;
+}
+.pf-pdf-main-canvas--hidden{
+  display: none;
+}
+.pf-pdf-text-layer{
+  position: absolute;
+  inset: 0 auto auto 0;
+  user-select: text;
+  pointer-events: auto;
+}
+.pf-pdf-text-layer span{
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0 0;
+  color: rgba(0, 0, 0, 0.01);
+  line-height: 1;
+}
+.pf-pdf-canvas-loading{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+  color: var(--pf-text-2);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(55, 53, 47, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.pf-pdf-fallback{
+  padding: 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px dashed rgba(55, 53, 47, 0.18);
+}
+.pf-pdf-layout--agent{
+  display: grid;
+  gap: 12px;
+  align-items: start;
+  grid-template-columns: minmax(146px, 0.56fr) minmax(0, 4.3fr) minmax(272px, 1.24fr);
+}
+.pf-pdf-layout--agent-no-rail{
+  grid-template-columns: minmax(0, 4.86fr) minmax(272px, 1.24fr);
+}
+.pf-paper-page-title-offset{
+  display: block;
+  margin-left: 158px;
+}
+.pf-paper-page-subtitle-offset{
+  display: inline-block;
+  margin-left: 158px;
+}
+.pf-pdf-rail{
+  padding: 4px 2px 4px 0;
+  position: sticky;
+  top: 72px;
+  display: grid;
+  gap: 10px;
+  height: calc(100vh - 86px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  justify-items: start;
+}
+.pf-pdf-thumbs{
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.pf-pdf-thumb{
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(55, 53, 47, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.96));
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+.pf-pdf-thumb__canvas{
+  width: 118px;
+  border-radius: 8px;
+  border: 1px solid rgba(55, 53, 47, 0.12);
+  background: #fff;
+  display: block;
+}
+.pf-pdf-thumb__canvas--hidden{
+  display: none;
+}
+.pf-pdf-thumb__skeleton{
+  width: 118px;
+  height: 78px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(220, 220, 220, 0.55), rgba(245, 245, 245, 0.9), rgba(220, 220, 220, 0.55));
+  background-size: 200% 100%;
+  animation: pf-skeleton-shimmer 1.2s linear infinite;
+}
+.pf-pdf-thumb:hover{
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(240, 248, 255, 0.9));
+}
+.pf-pdf-thumb:focus{
+  outline: none;
+}
+.pf-pdf-thumb:focus-visible{
+  box-shadow: var(--pf-focus);
+}
+.pf-pdf-thumb--active{
+  border-color: rgba(35, 131, 226, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(35, 131, 226, 0.2);
+}
+.pf-pdf-thumb__page{
+  font-size: 11px;
+  color: var(--pf-text-2);
+  font-weight: 650;
+}
+.pf-pdf-thumb__title{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pf-text);
+}
+.pf-pdf-thumb__snippet{
+  color: var(--pf-text-2);
+  font-size: 12px;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pf-pdf-rail__thumb{
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(55, 53, 47, 0.1);
+}
+.pf-pdf-rail__cover{
+  width: 100%;
+  display: block;
+}
+.pf-pdf-rail__meta{
+  display: grid;
+  gap: 6px;
+}
+.pf-pdf-legend{
+  display: grid;
+  gap: 5px;
+}
+.pf-pdf-legend__item{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--pf-text-2);
+}
+.pf-hl-dot{
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.pf-hl-dot--claim{ background: #f6c343; }
+.pf-hl-dot--evidence{ background: #3b82f6; }
+.pf-hl-dot--method{ background: #22c55e; }
+.pf-hl-dot--risk{ background: #ef4444; }
+.pf-pdf-highlights{
+  display: grid;
+  gap: 8px;
+}
+.pf-pdf-highlight{
+  border-radius: 10px;
+  border: 1px solid rgba(55, 53, 47, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+.pf-pdf-highlight__title{
+  font-weight: 700;
+}
+.pf-pdf-highlight__snippet{
+  color: var(--pf-text-2);
+  line-height: 1.7;
+  font-size: 12px;
+}
+.pf-pdf-highlight__snippet--selectable{
+  user-select: text;
+  cursor: text;
+}
+.pf-pill--tiny{
+  font-size: 11px;
+  padding: 2px 8px;
+}
+.pf-pill--claim{
+  background: rgba(246, 195, 67, 0.2);
+  border-color: rgba(173, 117, 0, 0.32);
+}
+.pf-pill--evidence{
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+.pf-pill--method{
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(22, 163, 74, 0.28);
+}
+.pf-pill--risk{
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(220, 38, 38, 0.26);
+}
+.pf-pdf-article{
+  margin-top: 10px;
+  border-top: 1px solid rgba(55, 53, 47, 0.08);
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+.pf-pdf-article__content{
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: var(--pf-text);
+}
+.pf-pdf-article__content--selectable{
+  user-select: text;
+  cursor: text;
+}
+.pf-ai-panel--kimi{
+  padding: 10px;
+  border-radius: 12px;
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 86px);
+  display: grid;
+  grid-template-rows: auto minmax(220px, 1fr) auto;
+}
+@keyframes pf-skeleton-shimmer{
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (max-width: 1080px){
+  .pf-paper-page-title-offset{
+    margin-left: 0;
+  }
+  .pf-paper-page-subtitle-offset{
+    margin-left: 0;
+  }
+  .pf-pdf-layout--agent-no-rail{
+    grid-template-columns: 1fr;
+  }
+  .pf-pdf-main{
+    min-height: auto;
+    display: block;
+  }
+  .pf-pdf-canvas-wrap{
+    min-height: 54vh;
+  }
+  .pf-pdf-main-skeleton{
+    height: 52vh;
+  }
+  .pf-pdf-rail{
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+  .pf-ai-panel--kimi{
+    position: static;
+    height: auto;
+  }
+}
+.pf-chatrow{
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  min-width: 0;
+}
+.pf-chatrow--user{
+  flex-direction: row-reverse;
+}
+.pf-chatavatar{
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(55, 53, 47, 0.16);
+  flex-shrink: 0;
+}
+.pf-chatavatar--assistant{
+  background: rgba(55, 53, 47, 0.08);
+}
+.pf-chatavatar--user{
+  background: rgba(35, 131, 226, 0.16);
+  color: rgba(8, 80, 145, 1);
+}
+.pf-ai-chatmsg{
+  max-width: calc(100% - 40px);
 }
 .pf-selection-popover{
   position: fixed;
@@ -803,6 +1197,14 @@ button:disabled{
   }
   .pf-admin-post-policy-card{
     grid-template-columns: 1fr;
+  }
+  .pf-pdf-layout--agent{
+    grid-template-columns: 1fr;
+  }
+  .pf-pdf-rail,
+  .pf-ai-panel--kimi{
+    position: static;
+    max-height: none;
   }
 }
 .pf-avatar{

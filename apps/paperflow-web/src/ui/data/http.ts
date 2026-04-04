@@ -15,7 +15,7 @@ const DEFAULT_TIMEOUT_MS = 8000;
 
 export async function httpJson<T>(
   input: string,
-  init: RequestInit & { accessToken?: string; requestId?: string } = {}
+  init: RequestInit & { accessToken?: string; requestId?: string; timeoutMs?: number } = {}
 ): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
@@ -29,7 +29,7 @@ export async function httpJson<T>(
     headers.set("X-Request-Id", init.requestId);
   }
 
-  const timeout = resolveTimeoutMs(input, init.method);
+  const timeout = init.timeoutMs && init.timeoutMs > 0 ? init.timeoutMs : resolveTimeoutMs(input, init.method);
   const timeoutController = new AbortController();
   const signals = [timeoutController.signal];
   if (init.signal) {

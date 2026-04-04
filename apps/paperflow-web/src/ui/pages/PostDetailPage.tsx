@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { apiCreateComment, apiFavoritePost, apiGeneratePathfinderPlan, apiGetPost, apiListComments, apiUnfavoritePost } from "../data/api";
+import { apiAiChat, apiCreateComment, apiFavoritePost, apiGetPost, apiListComments, apiUnfavoritePost } from "../data/api";
 import type { Comment, PathfinderModel, Post } from "../data/types";
 import { useAuth } from "../auth/AuthContext";
 import { Alert } from "../components/Alert";
@@ -173,7 +173,11 @@ export function PostDetailPage() {
         "如果原文是中文，请翻译成英文；如果原文是英文，请翻译成中文。",
         "请先给出译文，再给出一句术语说明。"
       ].join("\n\n");
-      const generated = await apiGeneratePathfinderPlan(auth.state.accessToken, { goal: prompt, model: aiModel });
+      const generated = await apiAiChat(auth.state.accessToken, {
+        model: aiModel,
+        systemPrompt: "你是 PaperFlow 阅读助手。",
+        userPrompt: prompt
+      });
       const assistantMsg: AiMessage = {
         id: `a_translate_${now}`,
         role: "assistant",
@@ -217,12 +221,12 @@ export function PostDetailPage() {
       ]
         .filter(Boolean)
         .join("\n\n");
-      const generated = await apiGeneratePathfinderPlan(auth.state.accessToken, { goal: prompt, model: aiModel });
-      let assistantContent = generated.assistantMessage || "后端已调用成功，但未返回可读回答。";
-      if (assistantContent.trim() === content.trim()) {
-        const steps = (generated.focus ?? []).slice(0, 3).map((f, idx) => `${idx + 1}. ${f}`).join("\n");
-        assistantContent = steps ? `核心要点：\n${steps}\n\n建议：先从第 1 点入手，再逐步展开。` : "我已理解你的问题，请给我一个更具体方向，例如“按三点总结并给行动建议”。";
-      }
+      const generated = await apiAiChat(auth.state.accessToken, {
+        model: aiModel,
+        systemPrompt: "你是 PaperFlow 阅读助手。",
+        userPrompt: prompt
+      });
+      const assistantContent = generated.assistantMessage || "后端已调用成功，但未返回可读回答。";
       const assistantMsg: AiMessage = {
         id: `a_${now}`,
         role: "assistant",

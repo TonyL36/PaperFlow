@@ -6,7 +6,7 @@
 
 - 用户域：`/api/v1/auth/**`、`/api/v1/users/**`、`/api/v1/public/users/**`、`/api/v1/oauth/**`、`/api/v1/users/me/bind/**`
 - 管理域：`/api/v1/admin/users/**`、`/api/v1/admin/settings/mail-templates/**`、`/api/v1/admin/comments/**`
-- 内容域：`/api/v1/posts/**`、`/api/v1/comments/**`、`/api/v1/favorites`、`/api/v1/footprints`、`/api/v1/pathfinder/sessions/**`
+- 内容域：`/api/v1/posts/**`、`/api/v1/comments/**`、`/api/v1/favorites`、`/api/v1/footprints`、`/api/v1/pathfinder/sessions/**`、`/api/v1/ai/**`
 - Agent 转发预留：`/api/v1/agents/**`
 
 ## 2) user-service（账号与用户）
@@ -25,6 +25,7 @@
 - 评论：`GET /comments`、`POST /comments`
 - 收藏与足迹：`POST /posts/{postId}/favorite`、`DELETE /posts/{postId}/favorite`、`GET /favorites`、`GET /footprints`
 - 评论管理：`GET /admin/comments`、`PATCH /admin/comments/{commentId}`
+- AI 对话：`POST /ai/chat`
 - Pathfinder：`GET /pathfinder/sessions`、`PUT /pathfinder/sessions/{sessionId}`、`POST /pathfinder/sessions/plan`、`POST /pathfinder/sessions/{sessionId}/favorite`、`DELETE /pathfinder/sessions/{sessionId}/favorite`
 - Agent 入库：`POST /internal/agent/posts`
 
@@ -46,4 +47,3 @@
 - 用户服务控制器：`backend/services/user-service/src/main/java/com/paperflow/user/api/`
 - 内容服务控制器：`backend/services/content-service/src/main/java/com/paperflow/content/api/`
 - Agent 服务入口：`app/main.py`
-

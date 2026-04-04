@@ -258,10 +258,10 @@ try {
   $env:VITE_API_BASE = $prevViteApi
   $pids.spa = $p4.Id
 
-  if (!(Wait-Http "http://localhost:$ContentServicePort/api/v1/actuator/health" 35)) { throw "content-service not ready" }
-  if (!(Wait-Http "http://localhost:$UserServicePort/api/v1/actuator/health" 35)) { throw "user-service not ready" }
-  if (!(Wait-Http "http://localhost:$GatewayPort/actuator/health" 35)) { throw "api-gateway not ready" }
-  if (!(Wait-Http "http://localhost:$GatewayPort/api/v1/posts?page[number]=1&page[size]=1" 35)) { throw "gateway upstream route not ready" }
+  if (!(Wait-Http "http://localhost:$ContentServicePort/api/v1/actuator/health" 120)) { throw "content-service not ready" }
+  if (!(Wait-Http "http://localhost:$UserServicePort/api/v1/actuator/health" 120)) { throw "user-service not ready" }
+  if (!(Wait-Http "http://localhost:$GatewayPort/actuator/health" 120)) { throw "api-gateway not ready" }
+  if (!(Wait-Http "http://localhost:$GatewayPort/api/v1/posts?page[number]=1&page[size]=1" 120)) { throw "gateway upstream route not ready" }
 
   Save-Pids $pids
   Write-Host ("gateway: http://localhost:{0}" -f $GatewayPort)

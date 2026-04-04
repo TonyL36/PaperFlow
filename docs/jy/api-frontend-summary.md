@@ -28,7 +28,11 @@
 - `GET /api/v1/favorites`
 - `GET /api/v1/footprints`
 
-## 4) Pathfinder 学习路径
+## 4) AI 对话与翻译
+
+- `POST /api/v1/ai/chat`
+
+## 5) Pathfinder 学习路径
 
 - `GET /api/v1/pathfinder/sessions`
 - `PUT /api/v1/pathfinder/sessions/{sessionId}`
@@ -36,7 +40,12 @@
 - `POST /api/v1/pathfinder/sessions/{sessionId}/favorite`
 - `DELETE /api/v1/pathfinder/sessions/{sessionId}/favorite`
 
-## 5) 管理端
+说明：
+
+- 阅读页与帖子详情页的问答/翻译统一使用 `/api/v1/ai/chat`
+- `/api/v1/pathfinder/sessions/plan` 仅用于学习路径规划
+
+## 6) 管理端
 
 - `GET /api/v1/admin/users`
 - `PATCH /api/v1/admin/users/{userId}`
@@ -47,8 +56,7 @@
 - `GET /api/v1/admin/settings/mail-templates/{templateType}`
 - `PUT /api/v1/admin/settings/mail-templates/{templateType}`
 
-## 6) 调用实现位置
+## 7) 调用实现位置
 
 - 前端 API 封装：`apps/paperflow-web/src/ui/data/api.ts`
 - Vite 代理规则：`apps/paperflow-web/vite.config.ts`
-
