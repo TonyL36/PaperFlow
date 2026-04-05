@@ -137,12 +137,15 @@ foreach ($it in $approved) {
   }
 }
 
-$outDir = Join-Path (Get-Location) "paperflow\scripts\out"
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptRoot
+$outDir = Join-Path $projectRoot "paperflow\scripts\out"
 if (!(Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
 $ts = [DateTimeOffset]::Now.ToUnixTimeSeconds()
-$okPath = Join-Path $outDir ("medical-upload-ok-" + $ts + ".csv")
-$failPath = Join-Path $outDir ("medical-upload-fail-" + $ts + ".csv")
-$skipPath = Join-Path $outDir ("medical-upload-skip-" + $ts + ".csv")
+$prefix = if ([string]::IsNullOrWhiteSpace($Source)) { "upload" } else { $Source + "-upload" }
+$okPath = Join-Path $outDir ($prefix + "-ok-" + $ts + ".csv")
+$failPath = Join-Path $outDir ($prefix + "-fail-" + $ts + ".csv")
+$skipPath = Join-Path $outDir ($prefix + "-skip-" + $ts + ".csv")
 $ok | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $okPath
 $fail | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $failPath
 $skip | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $skipPath

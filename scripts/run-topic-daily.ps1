@@ -85,12 +85,13 @@ try {
     -Source $source `
     -StatePath $StatePath
 
-  $ok = (Get-ChildItem -Path $outDir -Filter "medical-upload-ok-*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-  $fail = (Get-ChildItem -Path $outDir -Filter "medical-upload-fail-*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-  $skip = (Get-ChildItem -Path $outDir -Filter "medical-upload-skip-*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-  $okCount = if (Test-Path $ok) { [Math]::Max((Get-Content $ok).Count - 1, 0) } else { 0 }
-  $failCount = if (Test-Path $fail) { [Math]::Max((Get-Content $fail).Count - 1, 0) } else { 0 }
-  $skipCount = if (Test-Path $skip) { [Math]::Max((Get-Content $skip).Count - 1, 0) } else { 0 }
+  $prefix = $source + "-upload"
+  $okFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-ok-*.csv") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  $failFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-fail-*.csv") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  $skipFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-skip-*.csv") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  $okCount = if ($okFile) { [Math]::Max((Get-Content $okFile.FullName).Count - 1, 0) } else { 0 }
+  $failCount = if ($failFile) { [Math]::Max((Get-Content $failFile.FullName).Count - 1, 0) } else { 0 }
+  $skipCount = if ($skipFile) { [Math]::Max((Get-Content $skipFile.FullName).Count - 1, 0) } else { 0 }
   $end = GetTopicStats -baseUrl $BaseUrl -sourceName $source
   if ($end.dup -gt 0) { throw "duplicates detected after upload" }
   Write-Host ("DONE topic={0} ok={1} fail={2} skip={3} total={4}" -f $Topic, $okCount, $failCount, $skipCount, $end.count)
