@@ -258,7 +258,7 @@ foreach ($p in $papers) {
   $oneLine = [string]$reviewMeta.oneLineConclusion
   $postId = "post_review_" + $Topic + "_" + [Guid]::NewGuid().ToString("N")
   $paperId = "paper_review_" + $Topic + "_" + [Guid]::NewGuid().ToString("N")
-  $content = "# Paper Summary (Pending Review)`n- One-line conclusion: $oneLine`n`n$sum"
+  $content = "# Paper Summary (Pending Review)`n- One-line conclusion: $oneLine`n`n$sum`n`n## Formats`n- PDF: $([string]$p.pdfUrl)"
   $snippet = if ($content.Length -gt 180) { $content.Substring(0, 180) } else { $content }
   $payload = @{
     postId = $postId
