@@ -60,6 +60,55 @@ function NormalizeMarkdownText([string]$s) {
   return $t.Trim()
 }
 
+function BuildStructuredFallback([string]$topicLabel, [string]$abstract) {
+  $base = Norm(FixMojibake($abstract))
+  if ([string]::IsNullOrWhiteSpace($base)) {
+    $base = "Abstract unavailable. Need original paper verification."
+  }
+  return @(
+    "## Research Problem and Background",
+    $base,
+    "",
+    "## Method and Technical Route",
+    "- Refer to the original paper PDF for complete methodology.",
+    "- Validate model assumptions and data workflow with full text.",
+    "",
+    "## Results and Evidence",
+    "- Abstract has no quantitative metrics.",
+    "- Verify evidence and numerical claims from the original paper.",
+    "",
+    "## Limitations and Scope",
+    "- This summary is generated from title and abstract only.",
+    "- Requires domain expert review before publication.",
+    "",
+    "## Engineering and Product Implications",
+    "- Validate applicability for $topicLabel systems.",
+    "- Add compliance, risk and safety checks before rollout.",
+    "",
+    "## Human Review Checklist",
+    "- Confirm title, PDF, and summary refer to the same paper.",
+    "- Verify metrics and experimental setup from the original text.",
+    "- Verify boundary conditions and failure cases."
+  ) -join "`n"
+}
+
+function HasRequiredSections([string]$s) {
+  $t = NormalizeMarkdownText($s)
+  if ([string]::IsNullOrWhiteSpace($t)) { return $false }
+  $required = @(
+    "## Research Problem and Background",
+    "## Method and Technical Route",
+    "## Results and Evidence",
+    "## Limitations and Scope",
+    "## Engineering and Product Implications",
+    "## Human Review Checklist"
+  )
+  foreach ($h in $required) {
+    if ($t -notmatch [regex]::Escape($h)) { return $false }
+  }
+  return $true
+}
+
 function GetTopicMeta([string]$topic) {
   switch ($topic) {
     "medical" { return [pscustomobject]@{ source="agent-medical-review"; domain="medical-informatics"; label="Medical Informatics"; queries=@(
@@ -255,7 +304,22 @@ foreach ($x in $candidates) {
   $papers += $x
   if ($papers.Count -ge $TargetCount) { break }
 }
-if ($papers.Count -eq 0) { throw "no papers fetched from arxiv" }
+if ($papers.Count -eq 0) {
+  $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+  $projectRoot = Split-Path -Parent $scriptRoot
+  $outDir = Join-Path $projectRoot "paperflow\scripts\out"
+  if (!(Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+  $ts = [DateTimeOffset]::Now.ToUnixTimeSeconds()
+  $jsonPath = Join-Path $outDir ($Topic + "-review-" + $ts + ".json")
+  $mdPath = Join-Path $outDir ($Topic + "-review-" + $ts + ".md")
+  [System.IO.File]::WriteAllText($jsonPath, "[]", [System.Text.UTF8Encoding]::new($true))
+  $mdLines = @("# " + $meta.label + " Review List", "", "No new non-duplicate papers found.")
+  [System.IO.File]::WriteAllText($mdPath, ($mdLines -join "`r`n"), [System.Text.UTF8Encoding]::new($true))
+  Write-Host "DONE"
+  Write-Host ("review_json=" + $jsonPath)
+  Write-Host ("review_md=" + $mdPath)
+  return
+}
 
 $items = @()
 $i = 0
@@ -266,6 +330,11 @@ foreach ($p in $papers) {
   Write-Host ("STEP 3 summarize {0}/{1}: {2}" -f $i, $papers.Count, $title)
   $sum = BuildAiSummary -base $BaseUrl -token $token -model $Model -topicLabel $meta.label -title $title -abstract $abstract
   if ([string]::IsNullOrWhiteSpace($sum)) { $sum = "Summary generation failed. Please edit manually." }
+  if (-not (HasRequiredSections $sum)) {
+    $sum = BuildStructuredFallback -topicLabel $meta.label -abstract $abstract
+  } else {
+    $sum = NormalizeMarkdownText($sum)
+  }
   $reviewMeta = BuildReviewMeta -base $BaseUrl -token $token -model $Model -title $title -abstract $abstract -summary $sum
   $oneLine = [string]$reviewMeta.oneLineConclusion
   $postId = "post_review_" + $Topic + "_" + [Guid]::NewGuid().ToString("N")
