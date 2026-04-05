@@ -361,7 +361,7 @@ if ($papers.Count -eq 0) {
     if ($papers.Count -ge $TargetCount) { break }
   }
 }
-if ($papers.Count -eq 0) { throw "no papers fetched from arxiv" }
+if ($papers.Count -eq 0) { Write-Host "WARN no papers fetched from arxiv, continue with empty review set" }
 
 $items = @()
 $i = 0
