@@ -24,6 +24,30 @@ function Norm([string]$s) {
   return ($s -replace "\s+", " ").Trim()
 }
 
+function FixMojibake([string]$s) {
+  if ([string]::IsNullOrWhiteSpace($s)) { return "" }
+  try {
+    $hasLatin1Noise = $s -match '[\u00C0-\u00FF]' -or $s -match '[\u0080-\u00BF]'
+    if (-not $hasLatin1Noise) { return $s }
+    $bytes = [System.Text.Encoding]::GetEncoding(28591).GetBytes($s)
+    $fixed = [System.Text.Encoding]::UTF8.GetString($bytes)
+    if ($fixed -match '[\u4E00-\u9FFF]') { return $fixed }
+  } catch {
+  }
+  return $s
+}
+
+function NormalizeMarkdownText([string]$s) {
+  $t = FixMojibake($s)
+  if ([string]::IsNullOrWhiteSpace($t)) { return "" }
+  $t = $t -replace "\r\n", "`n"
+  $t = $t -replace "\s+###\s+", "`n### "
+  $t = $t -replace "\s+##\s+", "`n## "
+  $t = $t -replace "`n#`n#\s+", "`n## "
+  $t = $t -replace "`n{3,}", "`n`n"
+  return $t.Trim()
+}
+
 function GetTopicMeta([string]$topic) {
   switch ($topic) {
     "medical" { return [pscustomobject]@{ source="agent-medical-review"; domain="medical-informatics"; label="Medical Informatics"; queries=@(
@@ -253,9 +277,43 @@ function BuildAiSummary([string]$base, [string]$token, [string]$model, [string]$
   } | ConvertTo-Json -Depth 6
   try {
     $resp = Invoke-RestMethod -Method POST -Uri "$base/api/v1/ai/chat" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body -TimeoutSec 90
-    return Norm([string]$resp.data.assistantMessage)
+    return NormalizeMarkdownText([string]$resp.data.assistantMessage)
   } catch {
     return "AI service unavailable. Please retry later."
+  }
+}
+
+function BuildReviewMeta([string]$base, [string]$token, [string]$model, [string]$title, [string]$abstract, [string]$summary) {
+  $prompt = @(
+    'Generate JSON only.',
+    '{"zhTitle":"...","oneLineConclusion":"..."}',
+    'zhTitle: concise Chinese translation of title, no quote.',
+    'oneLineConclusion: one Chinese sentence, <= 50 chars, factual, no fabrication.',
+    "Title: $title",
+    "Abstract: $abstract",
+    "Summary: $summary"
+  ) -join "`n"
+  $body = @{
+    model = $model
+    systemPrompt = "Return strict JSON only."
+    userPrompt = $prompt
+  } | ConvertTo-Json -Depth 6
+  try {
+    $resp = Invoke-RestMethod -Method POST -Uri "$base/api/v1/ai/chat" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body -TimeoutSec 60
+    $txt = Norm(FixMojibake([string]$resp.data.assistantMessage))
+    if ($txt.StartsWith('```')) {
+      $txt = $txt -replace '^```[a-zA-Z]*', ''
+      $txt = $txt -replace '```$', ''
+      $txt = $txt.Trim()
+    }
+    $obj = $txt | ConvertFrom-Json
+    $zh = Norm(FixMojibake([string]$obj.zhTitle))
+    $one = Norm(FixMojibake([string]$obj.oneLineConclusion))
+    if ([string]::IsNullOrWhiteSpace($zh)) { $zh = $title }
+    if ([string]::IsNullOrWhiteSpace($one)) { $one = 'Need manual verification before publication.' }
+    return [pscustomobject]@{ zhTitle = $zh; oneLineConclusion = $one }
+  } catch {
+    return [pscustomobject]@{ zhTitle = $title; oneLineConclusion = 'Need manual verification before publication.' }
   }
 }
 
@@ -314,9 +372,11 @@ foreach ($p in $papers) {
   Write-Host ("STEP 3 summarize {0}/{1}: {2}" -f $i, $papers.Count, $title)
   $sum = BuildAiSummary -base $BaseUrl -token $token -model $Model -topicLabel $meta.label -title $title -abstract $abstract
   if ([string]::IsNullOrWhiteSpace($sum)) { $sum = "Summary generation failed. Please edit manually." }
+  $reviewMeta = BuildReviewMeta -base $BaseUrl -token $token -model $Model -title $title -abstract $abstract -summary $sum
+  $oneLine = [string]$reviewMeta.oneLineConclusion
   $postId = "post_review_" + $Topic + "_" + [Guid]::NewGuid().ToString("N")
   $paperId = "paper_review_" + $Topic + "_" + [Guid]::NewGuid().ToString("N")
-  $content = "# Paper Summary (Pending Review)`n`n$sum"
+  $content = "# Paper Summary (Pending Review)`n- One-line conclusion: $oneLine`n`n$sum"
   $snippet = if ($content.Length -gt 180) { $content.Substring(0, 180) } else { $content }
   $payload = @{
     postId = $postId
