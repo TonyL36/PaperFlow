@@ -249,7 +249,7 @@ $items = @()
 $i = 0
 foreach ($p in $papers) {
   $i++
-  $title = [string]$p.title
+  $title = ([string]$p.title) -replace '\s*\(Daily\s+\d{4}-\d{2}-\d{2}\)\s*$', ''
   $abstract = [string]$p.summary
   Write-Host ("STEP 3 summarize {0}/{1}: {2}" -f $i, $papers.Count, $title)
   $sum = BuildAiSummary -base $BaseUrl -token $token -model $Model -topicLabel $meta.label -title $title -abstract $abstract
