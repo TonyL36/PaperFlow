@@ -10,10 +10,10 @@ import { ErrorState } from "../components/ErrorState";
 import { Spinner } from "../components/Spinner";
 import { Button } from "../components/Button";
 import { apiAiChat, apiGetPost } from "../data/api";
-import type { PaperFormat, PaperFormatType, PaperHighlight, PaperHighlightLevel, PathfinderModel } from "../data/types";
+import type { PaperFormatType, PaperHighlight, PaperHighlightLevel, PathfinderModel } from "../data/types";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { Page } from "../layout/Page";
-import { resolvePaperPdf } from "../utils/paper";
+import { resolvePostPdfUrl } from "../utils/paper";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
@@ -91,11 +91,6 @@ function buildPaperHighlights(text: string): PaperHighlight[] {
   ];
 }
 
-function pickPdfFormat(formats: PaperFormat[] | null | undefined): PaperFormat | null {
-  if (!formats?.length) return null;
-  return formats.find((it) => it.type === "pdf") ?? null;
-}
-
 function pageHintOf(highlight: PaperHighlight): string {
   const anchor = highlight.anchor;
   if (!anchor) return "--";
@@ -171,17 +166,22 @@ export function PaperPdfReaderPage() {
   }
 
   const post = state.data ?? null;
-  const paperMeta = resolvePaperPdf(pid);
-  const paperTitle = post?.title ?? paperMeta.title;
+  const paperTitle = post?.title ?? "论文阅读";
   const formats = post?.formats?.length ? post.formats : null;
   const highlights = useMemo(() => (post?.highlights?.length ? post.highlights : buildPaperHighlights(post?.content ?? "")), [post?.highlights, post?.content]);
-  const pdfUrl = pickPdfFormat(formats)?.url ?? paperMeta.pdfUrl;
-  const renderPdfUrl = useMemo(() => toRenderablePdfUrl(pdfUrl), [pdfUrl]);
+  const pdfUrl = useMemo(() => resolvePostPdfUrl(formats, post?.content), [formats, post?.content]);
+  const renderPdfUrl = useMemo(() => (pdfUrl ? toRenderablePdfUrl(pdfUrl) : ""), [pdfUrl]);
   const pdfPageCount = pdfDoc?.numPages ?? 0;
   const thumbnailItems = useMemo(() => Array.from({ length: pdfPageCount }, (_, idx) => idx + 1), [pdfPageCount]);
   const currentUserName = auth.state.status === "authenticated" ? auth.state.displayName : "访客";
 
   useEffect(() => {
+    if (!renderPdfUrl) {
+      setPdfDoc(null);
+      setPdfRenderError(new Error("该文章未提供可用 PDF 链接"));
+      setPdfRendering(false);
+      return;
+    }
     let cancelled = false;
     const loadingTask = getDocument({ url: renderPdfUrl, withCredentials: false });
     setPdfDoc(null);
@@ -691,9 +691,13 @@ export function PaperPdfReaderPage() {
               <span className="pf-pdf-legend__item"><span className="pf-hl-dot pf-hl-dot--method" />方法与步骤</span>
               <span className="pf-pdf-legend__item"><span className="pf-hl-dot pf-hl-dot--risk" />风险与局限</span>
             </div>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-              在新标签页打开原始 PDF
-            </a>
+            {pdfUrl ? (
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                在新标签页打开原始 PDF
+              </a>
+            ) : (
+              <span className="pf-muted2">未提供可用 PDF 链接</span>
+            )}
           </div>
           <div className="pf-pdf-reader-surface">
             <div

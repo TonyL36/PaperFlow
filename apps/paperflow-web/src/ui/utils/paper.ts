@@ -1,16 +1,39 @@
-type PaperSpec = { title: string; pdfUrl: string };
+import type { PaperFormat } from "../data/types";
 
-const PAPER_LIBRARY: PaperSpec[] = [
-  { title: "Attention Is All You Need", pdfUrl: "https://arxiv.org/pdf/1706.03762.pdf" },
-  { title: "BERT: Pre-training of Deep Bidirectional Transformers", pdfUrl: "https://arxiv.org/pdf/1810.04805.pdf" },
-  { title: "Language Models are Few-Shot Learners", pdfUrl: "https://arxiv.org/pdf/2005.14165.pdf" }
-];
+function normalizePdfUrl(raw: string): string | null {
+  const value = raw.trim().replace(/[)\],.;]+$/g, "");
+  if (!value) return null;
+  if (value.startsWith("/")) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  return null;
+}
 
-export function resolvePaperPdf(postId: string): PaperSpec {
-  if (!postId) return PAPER_LIBRARY[0];
-  let checksum = 0;
-  for (let i = 0; i < postId.length; i += 1) {
-    checksum = (checksum + postId.charCodeAt(i)) % 2147483647;
+export function extractPdfUrlFromContent(content: string | null | undefined): string | null {
+  if (!content) return null;
+  const lines = content.split(/\r?\n/);
+  for (const row of lines) {
+    const line = row.trim();
+    if (!line) continue;
+    const markdownMatch = line.match(/\[PDF\]\((https?:\/\/[^\s)]+)\)/i);
+    if (markdownMatch?.[1]) {
+      const normalized = normalizePdfUrl(markdownMatch[1]);
+      if (normalized) return normalized;
+    }
+    const plainMatch = line.match(/PDF\s*[:：]\s*(https?:\/\/\S+)/i);
+    if (plainMatch?.[1]) {
+      const normalized = normalizePdfUrl(plainMatch[1]);
+      if (normalized) return normalized;
+    }
   }
-  return PAPER_LIBRARY[checksum % PAPER_LIBRARY.length];
+  return null;
+}
+
+export function resolvePostPdfUrl(
+  formats: PaperFormat[] | null | undefined,
+  content: string | null | undefined
+): string | null {
+  const pdfFromFormats = formats?.find((it) => it.type === "pdf" && !!it.url)?.url ?? null;
+  const normalizedFormatUrl = pdfFromFormats ? normalizePdfUrl(pdfFromFormats) : null;
+  if (normalizedFormatUrl) return normalizedFormatUrl;
+  return extractPdfUrlFromContent(content);
 }

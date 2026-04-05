@@ -39,6 +39,7 @@ import {
   visibleReplies
 } from "./postDetailCommentUtils";
 import { formatDateTime, readingTimeMinutes, sourceMeta } from "../utils/format";
+import { resolvePostPdfUrl } from "../utils/paper";
 
 type DetailData = { post: Post | null; comments: Comment[] };
 type AiMessage = { id: string; role: "assistant" | "user"; content: string; references?: string[] };
@@ -137,7 +138,8 @@ export function PostDetailPage() {
   const comments = state.data?.comments ?? [];
   const visibleCommentCount = totalVisibleCommentCount(comments);
   const sortedComments = useMemo(() => sortedRootComments(comments, commentSortMode), [comments, commentSortMode]);
-  const hasPdfFormat = post?.formats?.some((it) => it.type === "pdf") === true;
+  const paperPdfUrl = post ? resolvePostPdfUrl(post.formats, post.content) : null;
+  const hasPdfFormat = !!paperPdfUrl;
   const canFavorite = auth.state.status === "authenticated" && !!post;
   const favorited = post?.favorited === true;
   const liked = post?.liked === true;
