@@ -39,7 +39,6 @@ import {
   visibleReplies
 } from "./postDetailCommentUtils";
 import { formatDateTime, readingTimeMinutes, sourceMeta } from "../utils/format";
-import { resolvePaperPdf } from "../utils/paper";
 
 type DetailData = { post: Post | null; comments: Comment[] };
 type AiMessage = { id: string; role: "assistant" | "user"; content: string; references?: string[] };
@@ -138,7 +137,7 @@ export function PostDetailPage() {
   const comments = state.data?.comments ?? [];
   const visibleCommentCount = totalVisibleCommentCount(comments);
   const sortedComments = useMemo(() => sortedRootComments(comments, commentSortMode), [comments, commentSortMode]);
-  const paperMeta = post ? resolvePaperPdf(post.postId) : null;
+  const hasPdfFormat = post?.formats?.some((it) => it.type === "pdf") === true;
   const canFavorite = auth.state.status === "authenticated" && !!post;
   const favorited = post?.favorited === true;
   const liked = post?.liked === true;
@@ -483,7 +482,7 @@ export function PostDetailPage() {
               >
                 <RichText text={post.content} />
               </div>
-              {paperMeta ? (
+              {hasPdfFormat ? (
                 <div className="pf-paper-entry">
                   <span className="pf-muted2">延伸阅读论文</span>
                   <Link
@@ -492,7 +491,7 @@ export function PostDetailPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    打开 PDF：{paperMeta.title}
+                    打开 PDF：{post.title}
                   </Link>
                 </div>
               ) : null}

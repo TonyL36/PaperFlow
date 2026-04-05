@@ -172,6 +172,7 @@ export function PaperPdfReaderPage() {
 
   const post = state.data ?? null;
   const paperMeta = resolvePaperPdf(pid);
+  const paperTitle = post?.title ?? paperMeta.title;
   const formats = post?.formats?.length ? post.formats : null;
   const highlights = useMemo(() => (post?.highlights?.length ? post.highlights : buildPaperHighlights(post?.content ?? "")), [post?.highlights, post?.content]);
   const pdfUrl = pickPdfFormat(formats)?.url ?? paperMeta.pdfUrl;
@@ -538,7 +539,7 @@ export function PaperPdfReaderPage() {
       const direction = inferTranslationDirection(snippet);
       const primaryPrompt = [
         "你是翻译助手。",
-        `论文标题：${paperMeta.title}`,
+        `论文标题：${paperTitle}`,
         post ? `来源文章标题：${post.title}` : "",
         `把下面文本从${direction.source}翻译成${direction.target}：`,
         snippet,
@@ -584,7 +585,7 @@ export function PaperPdfReaderPage() {
       const contextRefs = refs?.length ? refs.join("\n") : "";
       const prompt = [
         "你是 PaperFlow 论文阅读助手，请根据论文标题与文章上下文回答用户问题。",
-        `论文标题：${paperMeta.title}`,
+        `论文标题：${paperTitle}`,
         post ? `来源文章标题：${post.title}` : "",
         post?.content ? `来源文章正文（节选）：\n${post.content.slice(0, 5000)}` : "",
         contextRefs ? `用户引用片段：\n${contextRefs}` : "",
@@ -682,7 +683,7 @@ export function PaperPdfReaderPage() {
         ) : null}
         <Card className="pf-pdf-main">
           <div className="pf-pdf-header">
-            <h3>{paperMeta.title}</h3>
+            <h3>{paperTitle}</h3>
             <div className="pf-muted2">{post ? `来源文章：${post.title}` : "来源文章加载中..."}</div>
             <div className="pf-pdf-legend">
               <span className="pf-pdf-legend__item"><span className="pf-hl-dot pf-hl-dot--claim" />核心结论</span>
