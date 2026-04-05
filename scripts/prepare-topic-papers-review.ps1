@@ -41,8 +41,20 @@ function NormalizeMarkdownText([string]$s) {
   $t = FixMojibake($s)
   if ([string]::IsNullOrWhiteSpace($t)) { return "" }
   $t = $t -replace "\r\n", "`n"
-  $t = $t -replace "\s+###\s+", "`n### "
-  $t = $t -replace "\s+##\s+", "`n## "
+  $t = $t -replace "\s+###\s+", "`n`n### "
+  $t = $t -replace "\s+##\s+", "`n`n## "
+  $sectionHeads = @(
+    "Research Problem and Background",
+    "Method and Technical Route",
+    "Results and Evidence",
+    "Limitations and Scope",
+    "Engineering and Product Implications",
+    "Human Review Checklist"
+  )
+  foreach ($h in $sectionHeads) {
+    $pat = "\s*##\s*" + [regex]::Escape($h) + "\s*"
+    $t = [regex]::Replace($t, $pat, "`n`n## $h`n")
+  }
   $t = $t -replace "`n#`n#\s+", "`n## "
   $t = $t -replace "`n{3,}", "`n`n"
   return $t.Trim()
