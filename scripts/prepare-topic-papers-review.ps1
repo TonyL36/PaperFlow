@@ -23,13 +23,13 @@ function GetTopicMeta([string]$topic) {
       'cat:q-bio.QM AND (all:medical OR all:healthcare OR all:clinical)'
     ); fallback='all:medical OR all:clinical' } }
     "cybersecurity" { return [pscustomobject]@{ source="agent-cybersecurity-review"; domain="cybersecurity"; label="Cybersecurity"; queries=@(
-      'cat:cs.CR AND (all:security OR all:vulnerability OR all:malware OR all:intrusion)',
-      '(cat:cs.CR OR cat:cs.NI) AND (all:"threat detection" OR all:"network security" OR all:"attack")'
-    ); fallback='cat:cs.CR AND (all:security OR all:cyber)' } }
+      '(all:security OR all:cybersecurity OR all:vulnerability OR all:malware OR all:intrusion)',
+      '(all:"network security" OR all:"threat detection" OR all:"cyber attack" OR all:ransomware)'
+    ); fallback='all:security OR all:cybersecurity' } }
     "bigdata" { return [pscustomobject]@{ source="agent-bigdata-review"; domain="big-data"; label="Big Data"; queries=@(
-      '(cat:cs.DB OR cat:cs.DC OR cat:cs.LG) AND (all:"big data" OR all:"data engineering" OR all:"distributed data")',
-      '(cat:cs.DB OR cat:cs.IR) AND (all:"data mining" OR all:"data warehouse" OR all:"stream processing")'
-    ); fallback='cat:cs.DB AND (all:data OR all:database)' } }
+      '(all:"big data" OR all:"data engineering" OR all:"distributed data" OR all:"data platform")',
+      '(all:"data mining" OR all:"stream processing" OR all:"data warehouse" OR all:"analytics pipeline")'
+    ); fallback='all:"big data" OR all:"data mining" OR all:"distributed systems"' } }
   }
 }
 
