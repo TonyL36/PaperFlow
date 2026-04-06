@@ -128,9 +128,10 @@ function GetTopicMeta([string]$topic) {
 
 function FetchRecentPapers([string[]]$queries, [int]$maxResults) {
   $arxivHosts = @("https://export.arxiv.org", "https://arxiv.org")
+  $scanMultiplier = 20
   $all = @()
   foreach ($q in $queries) {
-    for ($start = 0; $start -lt ($maxResults * 4); $start += $maxResults) {
+    for ($start = 0; $start -lt ($maxResults * $scanMultiplier); $start += $maxResults) {
       $enc = [uri]::EscapeDataString($q)
       $content = $null
       foreach ($arxivHost in $arxivHosts) {
@@ -189,6 +190,99 @@ function FetchRecentPapers([string[]]$queries, [int]$maxResults) {
     if (-not $uniq.ContainsKey($k)) { $uniq[$k] = $p }
   }
   return @($uniq.Values | Sort-Object publishedAt -Descending)
+}
+
+function GetTopicRssFeeds([string]$topic) {
+  switch ($topic) {
+    "medical" { return @("https://rss.arxiv.org/rss/cs.CL", "https://rss.arxiv.org/rss/q-bio.QM") }
+    "cybersecurity" { return @("https://rss.arxiv.org/rss/cs.CR", "https://rss.arxiv.org/rss/cs.NI") }
+    "bigdata" { return @("https://rss.arxiv.org/rss/cs.DB", "https://rss.arxiv.org/rss/cs.DC", "https://rss.arxiv.org/rss/cs.DS") }
+  }
+  return @()
+}
+
+function FetchRecentPapersFromRss([string]$topic, [int]$maxPerFeed) {
+  $feeds = @(GetTopicRssFeeds -topic $topic)
+  $all = @()
+  foreach ($feed in $feeds) {
+    try {
+      [xml]$rss = (Invoke-WebRequest -Method GET -Uri $feed -TimeoutSec 35 -UseBasicParsing).Content
+      $items = @($rss.rss.channel.item)
+      $count = 0
+      foreach ($it in $items) {
+        if ($count -ge $maxPerFeed) { break }
+        $link = Norm([string]$it.link)
+        $title = Norm([string]$it.title)
+        $desc = [string]$it.description
+        if ([string]::IsNullOrWhiteSpace($desc)) { $desc = "" }
+        $summary = Norm(([regex]::Replace($desc, "<[^>]+>", " ")))
+        $publishedAt = ""
+        try {
+          if (-not [string]::IsNullOrWhiteSpace([string]$it.pubDate)) {
+            $publishedAt = ([datetimeoffset]::Parse([string]$it.pubDate)).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          }
+        } catch {
+        }
+        $pdf = ""
+        if ($link -match "arxiv\.org/abs/([^/?#]+)") {
+          $pdf = "https://arxiv.org/pdf/$($Matches[1]).pdf"
+        }
+        if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($pdf)) { continue }
+        $all += [pscustomobject]@{
+          sourceId = $link
+          title = $title
+          summary = $summary
+          publishedAt = $publishedAt
+          pdfUrl = $pdf
+        }
+        $count++
+      }
+    } catch {
+    }
+  }
+  $uniq = @{}
+  foreach ($p in $all) {
+    $k = if ($p.sourceId) { $p.sourceId } else { $p.title.ToLowerInvariant() }
+    if (-not $uniq.ContainsKey($k)) { $uniq[$k] = $p }
+  }
+  return @($uniq.Values | Sort-Object publishedAt -Descending)
+}
+
+function GetTopicFallbackQueries([string]$topic) {
+  switch ($topic) {
+    "medical" { return @(
+      'cat:cs.CL AND (all:clinical OR all:medical OR all:healthcare)',
+      'cat:q-bio.QM AND (all:biomedical OR all:clinical)'
+    ) }
+    "cybersecurity" { return @(
+      '(cat:cs.CR OR cat:cs.NI) AND (all:security OR all:intrusion OR all:vulnerability)',
+      '(all:"network security" OR all:"threat detection" OR all:"adversarial attack")'
+    ) }
+    "bigdata" { return @(
+      '(cat:cs.DB OR cat:cs.DC OR cat:cs.DS) AND (all:data OR all:distributed OR all:stream)',
+      '(all:"data engineering" OR all:"stream processing" OR all:"analytics pipeline")'
+    ) }
+  }
+  return @()
+}
+
+function SelectNonDuplicatePapers(
+  [object[]]$candidates,
+  [hashtable]$existingTitleSet,
+  [hashtable]$selectedTitleSet,
+  [int]$needCount
+) {
+  $picked = @()
+  foreach ($x in @($candidates | Sort-Object publishedAt -Descending)) {
+    $k = Norm([string]$x.title).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($k)) { continue }
+    if ($existingTitleSet.ContainsKey($k)) { continue }
+    if ($selectedTitleSet.ContainsKey($k)) { continue }
+    $selectedTitleSet[$k] = $true
+    $picked += $x
+    if ($picked.Count -ge $needCount) { break }
+  }
+  return @($picked)
 }
 
 function FetchExistingTitleSet([string]$baseUrl, [string]$source) {
@@ -291,18 +385,31 @@ if ([string]::IsNullOrWhiteSpace($token)) { throw "login failed" }
 
 Write-Host "STEP 2 fetch recent papers..."
 $existing = FetchExistingTitleSet -baseUrl $BaseUrl -source $meta.source
-$candidates = @(FetchRecentPapers -queries $meta.queries -maxResults ([Math]::Max(20, $TargetCount * 2)))
-$fallbackCandidates = @()
-if ($candidates.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace([string]$meta.fallback)) {
-  $fallbackCandidates = @(FetchRecentPapers -queries @([string]$meta.fallback) -maxResults 40)
-}
-$candidates += $fallbackCandidates
 $papers = @()
-foreach ($x in $candidates) {
-  $k = Norm([string]$x.title).ToLowerInvariant()
-  if ($existing.ContainsKey($k)) { continue }
-  $papers += $x
-  if ($papers.Count -ge $TargetCount) { break }
+$selectedTitleSet = @{}
+
+$primaryCandidates = @(FetchRecentPapers -queries $meta.queries -maxResults ([Math]::Max(60, $TargetCount * 8)))
+$papers += @(SelectNonDuplicatePapers -candidates $primaryCandidates -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $TargetCount)
+
+if ($papers.Count -lt $TargetCount -and -not [string]::IsNullOrWhiteSpace([string]$meta.fallback)) {
+  $need = $TargetCount - $papers.Count
+  $fallbackCandidates = @(FetchRecentPapers -queries @([string]$meta.fallback) -maxResults ([Math]::Max(80, $TargetCount * 10)))
+  $papers += @(SelectNonDuplicatePapers -candidates $fallbackCandidates -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $need)
+}
+
+if ($papers.Count -lt $TargetCount) {
+  $need = $TargetCount - $papers.Count
+  $topicFallbackQueries = @(GetTopicFallbackQueries -topic $Topic)
+  if ($topicFallbackQueries.Count -gt 0) {
+    $broadCandidates = @(FetchRecentPapers -queries $topicFallbackQueries -maxResults ([Math]::Max(100, $TargetCount * 12)))
+    $papers += @(SelectNonDuplicatePapers -candidates $broadCandidates -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $need)
+  }
+}
+
+if ($papers.Count -lt $TargetCount) {
+  $need = $TargetCount - $papers.Count
+  $rssCandidates = @(FetchRecentPapersFromRss -topic $Topic -maxPerFeed ([Math]::Max(40, $TargetCount * 6)))
+  $papers += @(SelectNonDuplicatePapers -candidates $rssCandidates -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $need)
 }
 if ($papers.Count -eq 0) {
   $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
