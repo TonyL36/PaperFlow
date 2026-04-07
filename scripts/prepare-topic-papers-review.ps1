@@ -128,26 +128,45 @@ function GetTopicMeta([string]$topic) {
 
 function FetchRecentPapers([string[]]$queries, [int]$maxResults) {
   $arxivHosts = @("https://export.arxiv.org", "https://arxiv.org")
-  $scanMultiplier = 20
+  $scanMultiplier = 12
+  $requestBudget = 80
+  $requestCount = 0
+  $rateLimitUntil = [datetime]::MinValue
   $all = @()
   foreach ($q in $queries) {
+    if ($requestCount -ge $requestBudget) { break }
     for ($start = 0; $start -lt ($maxResults * $scanMultiplier); $start += $maxResults) {
+      if ($requestCount -ge $requestBudget) { break }
       $enc = [uri]::EscapeDataString($q)
       $content = $null
       foreach ($arxivHost in $arxivHosts) {
+        if ($requestCount -ge $requestBudget) { break }
         if (-not [string]::IsNullOrWhiteSpace($content)) { break }
         $url = "$arxivHost/api/query?search_query=$enc&start=$start&max_results=$maxResults&sortBy=submittedDate&sortOrder=descending"
+        if ((Get-Date) -lt $rateLimitUntil) {
+          Start-Sleep -Milliseconds 1500
+        }
         for ($i = 0; $i -lt 3; $i++) {
           try {
+            Start-Sleep -Milliseconds 450
+            $requestCount++
             $resp = Invoke-WebRequest -Method GET -Uri $url -Headers @{ "User-Agent" = "PaperFlow-TopicPrep/1.0" } -TimeoutSec 40 -UseBasicParsing
             $content = $resp.Content
             break
           } catch {
+            $statusCode = 0
+            try { $statusCode = [int]$_.Exception.Response.StatusCode } catch { $statusCode = 0 }
+            if ($statusCode -eq 429) {
+              $rateLimitUntil = (Get-Date).AddMinutes(3)
+              Start-Sleep -Seconds (8 + 4 * $i)
+              break
+            }
             Start-Sleep -Seconds (2 + 2 * $i)
           }
         }
-        if ([string]::IsNullOrWhiteSpace($content) -and $curlBin) {
+        if ([string]::IsNullOrWhiteSpace($content) -and $curlBin -and (Get-Date) -ge $rateLimitUntil) {
           try {
+            $requestCount++
             $content = & $curlBin "-fsSL" "-A" "PaperFlow-TopicPrep/1.0" "--max-time" "40" $url
           } catch {
           }
@@ -388,8 +407,16 @@ $existing = FetchExistingTitleSet -baseUrl $BaseUrl -source $meta.source
 $papers = @()
 $selectedTitleSet = @{}
 
-$primaryCandidates = @(FetchRecentPapers -queries $meta.queries -maxResults ([Math]::Max(60, $TargetCount * 8)))
-$papers += @(SelectNonDuplicatePapers -candidates $primaryCandidates -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $TargetCount)
+if ($Topic -eq "bigdata") {
+  $rssFirst = @(FetchRecentPapersFromRss -topic $Topic -maxPerFeed ([Math]::Max(50, $TargetCount * 8)))
+  $papers += @(SelectNonDuplicatePapers -candidates $rssFirst -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $TargetCount)
+}
+
+if ($papers.Count -lt $TargetCount) {
+  $need = $TargetCount - $papers.Count
+  $primaryCandidates = @(FetchRecentPapers -queries $meta.queries -maxResults ([Math]::Max(60, $TargetCount * 8)))
+  $papers += @(SelectNonDuplicatePapers -candidates $primaryCandidates -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $need)
+}
 
 if ($papers.Count -lt $TargetCount -and -not [string]::IsNullOrWhiteSpace([string]$meta.fallback)) {
   $need = $TargetCount - $papers.Count

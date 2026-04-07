@@ -15,6 +15,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $root
 if ([string]::IsNullOrWhiteSpace($StatePath)) { $StatePath = Join-Path $root ("state\" + $Topic + "-ingest-state.json") }
 if ([string]::IsNullOrWhiteSpace($LockFile)) { $LockFile = Join-Path $root ("state\" + $Topic + "-daily.lock") }
+$lockTtlMinutes = 90
 
 switch ($Topic) {
   "medical" { $source = "agent-medical-review" }
@@ -37,12 +38,50 @@ function GetTopicStats([string]$baseUrl, [string]$sourceName) {
   return [pscustomobject]@{ count = $rows.Count; dup = $dup.Count }
 }
 
+function IsTopicJobRunning([string]$topicName) {
+  if ($IsLinux -or $IsMacOS) {
+    try {
+      $cmd = "pgrep -af ""run-topic-daily\.ps1.*-Topic\s+$topicName(\s|$)"" | grep -v grep || true"
+      $rows = @(& /bin/bash -lc $cmd)
+      foreach ($row in $rows) {
+        $line = [string]$row
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $parts = $line -split "\s+", 2
+        if ($parts.Count -lt 1) { continue }
+        $pidFound = 0
+        if (-not [int]::TryParse($parts[0], [ref]$pidFound)) { continue }
+        if ($pidFound -ne $PID) { return $true }
+      }
+      return $false
+    } catch {
+      return $false
+    }
+  }
+  return $false
+}
+
 $stateDir = Split-Path -Parent $LockFile
 if (!(Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
-if (Test-Path $LockFile) { throw "$Topic daily job already running" }
+if (Test-Path $LockFile) {
+  $running = IsTopicJobRunning -topicName $Topic
+  if (-not $running) {
+    Remove-Item -Force $LockFile
+    Write-Host ("WARN stale lock removed topic={0} reason=no-running-process" -f $Topic)
+  }
+}
+if (Test-Path $LockFile) {
+  $lockAgeMinutes = ((Get-Date) - (Get-Item $LockFile).LastWriteTime).TotalMinutes
+  if ($lockAgeMinutes -gt $lockTtlMinutes) {
+    Remove-Item -Force $LockFile
+    Write-Host ("WARN stale lock removed topic={0} age_minutes={1:n1}" -f $Topic, $lockAgeMinutes)
+  } else {
+    throw "$Topic daily job already running"
+  }
+}
 [System.IO.File]::WriteAllText($LockFile, ((Get-Date).ToString("s")), [System.Text.UTF8Encoding]::new($true))
 
 try {
+  $jobStartedAt = Get-Date
   $outDir = Join-Path $projectRoot "paperflow\scripts\out"
   if (!(Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
   $start = GetTopicStats -baseUrl $BaseUrl -sourceName $source
@@ -75,6 +114,7 @@ try {
       $it.reviewerNote = "approved by topic daily pipeline"
     }
   }
+  $approvedCount = @($items | Where-Object { $_.reviewStatus -eq "APPROVED" }).Count
   [System.IO.File]::WriteAllText($review, ($items | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($true))
 
   & (Join-Path $root "upload-reviewed-papers.ps1") `
@@ -85,13 +125,18 @@ try {
     -Source $source `
     -StatePath $StatePath
 
-  $prefix = $source + "-upload"
-  $okFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-ok-*.csv") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  $failFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-fail-*.csv") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  $skipFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-skip-*.csv") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  $okCount = if ($okFile) { [Math]::Max((Get-Content $okFile.FullName).Count - 1, 0) } else { 0 }
-  $failCount = if ($failFile) { [Math]::Max((Get-Content $failFile.FullName).Count - 1, 0) } else { 0 }
-  $skipCount = if ($skipFile) { [Math]::Max((Get-Content $skipFile.FullName).Count - 1, 0) } else { 0 }
+  $okCount = 0
+  $failCount = 0
+  $skipCount = 0
+  if ($approvedCount -gt 0) {
+    $prefix = $source + "-upload"
+    $okFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-ok-*.csv") | Where-Object { $_.LastWriteTime -ge $jobStartedAt.AddSeconds(-5) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $failFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-fail-*.csv") | Where-Object { $_.LastWriteTime -ge $jobStartedAt.AddSeconds(-5) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $skipFile = Get-ChildItem -Path $outDir -Filter ($prefix + "-skip-*.csv") | Where-Object { $_.LastWriteTime -ge $jobStartedAt.AddSeconds(-5) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $okCount = if ($okFile) { [Math]::Max((Get-Content $okFile.FullName).Count - 1, 0) } else { 0 }
+    $failCount = if ($failFile) { [Math]::Max((Get-Content $failFile.FullName).Count - 1, 0) } else { 0 }
+    $skipCount = if ($skipFile) { [Math]::Max((Get-Content $skipFile.FullName).Count - 1, 0) } else { 0 }
+  }
   $end = GetTopicStats -baseUrl $BaseUrl -sourceName $source
   if ($end.dup -gt 0) { throw "duplicates detected after upload" }
   Write-Host ("DONE topic={0} ok={1} fail={2} skip={3} total={4}" -f $Topic, $okCount, $failCount, $skipCount, $end.count)
