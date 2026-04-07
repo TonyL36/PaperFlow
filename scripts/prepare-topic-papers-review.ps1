@@ -128,8 +128,8 @@ function GetTopicMeta([string]$topic) {
 
 function FetchRecentPapers([string[]]$queries, [int]$maxResults) {
   $arxivHosts = @("https://export.arxiv.org", "https://arxiv.org")
-  $scanMultiplier = 12
-  $requestBudget = 80
+  $scanMultiplier = 8
+  $requestBudget = 24
   $requestCount = 0
   $rateLimitUntil = [datetime]::MinValue
   $all = @()
@@ -157,8 +157,8 @@ function FetchRecentPapers([string[]]$queries, [int]$maxResults) {
             $statusCode = 0
             try { $statusCode = [int]$_.Exception.Response.StatusCode } catch { $statusCode = 0 }
             if ($statusCode -eq 429) {
-              $rateLimitUntil = (Get-Date).AddMinutes(3)
-              Start-Sleep -Seconds (8 + 4 * $i)
+              $rateLimitUntil = (Get-Date).AddSeconds(25)
+              Start-Sleep -Seconds (3 + 2 * $i)
               break
             }
             Start-Sleep -Seconds (2 + 2 * $i)
@@ -407,10 +407,9 @@ $existing = FetchExistingTitleSet -baseUrl $BaseUrl -source $meta.source
 $papers = @()
 $selectedTitleSet = @{}
 
-if ($Topic -eq "bigdata") {
-  $rssFirst = @(FetchRecentPapersFromRss -topic $Topic -maxPerFeed ([Math]::Max(50, $TargetCount * 8)))
-  $papers += @(SelectNonDuplicatePapers -candidates $rssFirst -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $TargetCount)
-}
+$rssPerFeed = if ($Topic -eq "medical") { [Math]::Max(220, $TargetCount * 30) } else { [Math]::Max(120, $TargetCount * 16) }
+$rssFirst = @(FetchRecentPapersFromRss -topic $Topic -maxPerFeed $rssPerFeed)
+$papers += @(SelectNonDuplicatePapers -candidates $rssFirst -existingTitleSet $existing -selectedTitleSet $selectedTitleSet -needCount $TargetCount)
 
 if ($papers.Count -lt $TargetCount) {
   $need = $TargetCount - $papers.Count
