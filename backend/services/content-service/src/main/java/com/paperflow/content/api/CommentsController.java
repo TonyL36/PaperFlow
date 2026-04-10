@@ -11,10 +11,12 @@ import com.paperflow.content.repo.CommentLikeRepository;
 import com.paperflow.content.repo.CommentRepository;
 import com.paperflow.content.repo.PostLikeRepository;
 import com.paperflow.content.repo.PostRepository;
+import com.paperflow.content.service.NotificationService;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,12 +41,14 @@ public class CommentsController {
   private final PostRepository posts;
   private final CommentLikeRepository commentLikes;
   private final PostLikeRepository postLikes;
+  private final NotificationService notifications;
 
-  public CommentsController(CommentRepository comments, PostRepository posts, CommentLikeRepository commentLikes, PostLikeRepository postLikes) {
+  public CommentsController(CommentRepository comments, PostRepository posts, CommentLikeRepository commentLikes, PostLikeRepository postLikes, NotificationService notifications) {
     this.comments = comments;
     this.posts = posts;
     this.commentLikes = commentLikes;
     this.postLikes = postLikes;
+    this.notifications = notifications;
   }
 
   @GetMapping
@@ -60,19 +64,30 @@ public class CommentsController {
     }
     int pn = Math.max(1, pageNumber);
     int ps = Math.min(200, Math.max(1, pageSize));
-    List<CommentEntity> roots = comments.listRootsByPost(postId, "APPROVED", PageRequest.of(pn - 1, ps));
-    List<String> rootIds = roots.stream().map(CommentEntity::getId).toList();
-    List<CommentEntity> replies = rootIds.isEmpty() ? List.of() : comments.listRepliesByPostAndParents(postId, "APPROVED", rootIds);
-    Map<String, List<CommentEntity>> repliesByParent = new LinkedHashMap<>();
-    for (CommentEntity reply : replies) {
-      String parentId = reply.getParentCommentId();
-      if (parentId == null || parentId.isBlank()) {
+    String normalizedUserId = userId == null ? "" : userId.trim();
+    List<CommentEntity> visible = comments.listVisibleByPostForUser(postId, normalizedUserId);
+    Map<String, CommentEntity> byId = new LinkedHashMap<>();
+    for (CommentEntity c : visible) {
+      byId.put(c.getId(), c);
+    }
+    Map<String, List<CommentEntity>> childrenByParent = new LinkedHashMap<>();
+    List<CommentEntity> roots = new ArrayList<>();
+    for (CommentEntity c : visible) {
+      String parentId = c.getParentCommentId();
+      if (parentId == null || parentId.isBlank() || !byId.containsKey(parentId)) {
+        roots.add(c);
         continue;
       }
-      repliesByParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(reply);
+      childrenByParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(c);
     }
-    List<CommentResponse> items = roots.stream()
-        .map(root -> toDto(root, userId, repliesByParent.getOrDefault(root.getId(), List.of())))
+    roots.sort(Comparator.comparing(CommentEntity::getCreatedAt).reversed());
+    for (List<CommentEntity> children : childrenByParent.values()) {
+      children.sort(Comparator.comparing(CommentEntity::getCreatedAt));
+    }
+    int from = Math.min((pn - 1) * ps, roots.size());
+    int to = Math.min(from + ps, roots.size());
+    List<CommentResponse> items = roots.subList(from, to).stream()
+        .map(root -> toTreeDto(root, userId, childrenByParent, 1))
         .toList();
 
     var data = new LinkedHashMap<String, Object>();
@@ -95,6 +110,13 @@ public class CommentsController {
     if (userId == null || userId.isBlank()) {
       return ResponseEntity.status(401).body(Envelope.err(safeRequestId(requestId), "AUTH_MISSING_TOKEN", "Missing user identity", java.util.Map.of()));
     }
+    String normalizedContent = req.content() == null ? "" : req.content().trim();
+    if (normalizedContent.isBlank()) {
+      return ResponseEntity.status(400).body(Envelope.err(safeRequestId(requestId), "REQ_INVALID", "Comment content is required", java.util.Map.of("field", "content")));
+    }
+    if (normalizedContent.length() > 2000) {
+      return ResponseEntity.status(400).body(Envelope.err(safeRequestId(requestId), "REQ_INVALID", "Comment content must be <= 2000 chars", java.util.Map.of("field", "content")));
+    }
     PostEntity post = posts.findById(req.postId()).orElse(null);
     if (post == null) {
       return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "Post not found", java.util.Map.of()));
@@ -106,8 +128,9 @@ public class CommentsController {
       if (parent == null || !req.postId().equals(parent.getPostId())) {
         return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "Parent comment not found", java.util.Map.of()));
       }
-      if (parent.getParentCommentId() != null && !parent.getParentCommentId().isBlank()) {
-        return ResponseEntity.status(400).body(Envelope.err(safeRequestId(requestId), "REQ_INVALID", "Only two-level comments are supported", java.util.Map.of()));
+      int parentDepth = commentDepth(parent);
+      if (parentDepth >= 5) {
+        return ResponseEntity.status(400).body(Envelope.err(safeRequestId(requestId), "REQ_INVALID", "Max comment depth is 5", java.util.Map.of()));
       }
     }
 
@@ -115,11 +138,15 @@ public class CommentsController {
     c.setId("c_" + UUID.randomUUID().toString().replace("-", ""));
     c.setPostId(req.postId());
     c.setUserId(userId);
-    c.setContent(req.content());
+    c.setContent(normalizedContent);
     c.setParentCommentId(parentCommentId);
-    c.setStatus(Boolean.FALSE.equals(post.getCommentModerationEnabled()) ? "APPROVED" : "PENDING");
+    String status = Boolean.FALSE.equals(post.getCommentModerationEnabled()) ? "APPROVED" : "PENDING";
+    c.setStatus(status);
     c.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
     comments.save(c);
+    if ("APPROVED".equals(status)) {
+      notifications.notifyReplyIfNeeded(c);
+    }
 
     return ResponseEntity.status(201).body(Envelope.ok(
         safeRequestId(requestId),
@@ -184,8 +211,13 @@ public class CommentsController {
     return ResponseEntity.ok(Envelope.ok(safeRequestId(requestId), data, List.of()));
   }
 
-  private CommentResponse toDto(CommentEntity c, String userId, List<CommentEntity> replies) {
-    List<CommentResponse> replyDtos = replies.stream().map(reply -> toLeafDto(reply, userId)).toList();
+  private CommentResponse toTreeDto(CommentEntity c, String userId, Map<String, List<CommentEntity>> childrenByParent, int depth) {
+    List<CommentResponse> replyDtos = List.of();
+    if (depth < 5) {
+      replyDtos = childrenByParent.getOrDefault(c.getId(), List.of()).stream()
+          .map(reply -> toTreeDto(reply, userId, childrenByParent, depth + 1))
+          .toList();
+    }
     return new CommentResponse(
         c.getId(),
         c.getPostId(),
@@ -198,6 +230,22 @@ public class CommentsController {
         replyDtos,
         c.getCreatedAt()
     );
+  }
+
+  private int commentDepth(CommentEntity comment) {
+    int depth = 1;
+    CommentEntity cursor = comment;
+    while (cursor.getParentCommentId() != null && !cursor.getParentCommentId().isBlank()) {
+      depth += 1;
+      cursor = comments.findById(cursor.getParentCommentId()).orElse(null);
+      if (cursor == null) {
+        break;
+      }
+      if (depth > 5) {
+        break;
+      }
+    }
+    return depth;
   }
 
   private CommentResponse toLeafDto(CommentEntity c, String userId) {

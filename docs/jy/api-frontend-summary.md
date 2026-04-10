@@ -5,6 +5,7 @@
 ## 1) 认证与账号
 
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
 - `POST /api/v1/auth/register/email-code/request`
 - `POST /api/v1/auth/register`
@@ -21,8 +22,13 @@
 
 - `GET /api/v1/posts`
 - `GET /api/v1/posts/{postId}`
+- `POST /api/v1/posts/{postId}/like`
+- `DELETE /api/v1/posts/{postId}/like`
 - `GET /api/v1/comments`
 - `POST /api/v1/comments`
+- `POST /api/v1/comments/{commentId}/like`
+- `DELETE /api/v1/comments/{commentId}/like`
+- `GET /api/v1/comments/users/{userId}/card`
 - `POST /api/v1/posts/{postId}/favorite`
 - `DELETE /api/v1/posts/{postId}/favorite`
 - `GET /api/v1/favorites`
@@ -52,11 +58,18 @@
 - `POST /api/v1/admin/users/{userId}/revoke-tokens`
 - `GET /api/v1/admin/comments`
 - `PATCH /api/v1/admin/comments/{commentId}`
+- `PATCH /api/v1/admin/posts/{postId}/comment-moderation`
 - `GET /api/v1/admin/settings/mail-templates/types`
 - `GET /api/v1/admin/settings/mail-templates/{templateType}`
 - `PUT /api/v1/admin/settings/mail-templates/{templateType}`
 
-## 7) 调用实现位置
+## 7) 消息中心
+
+- `GET /api/v1/notifications`
+- `POST /api/v1/notifications/{notificationId}/read`
+- `POST /api/v1/notifications/read-all`
+
+## 8) 调用实现位置
 
 - 前端 API 封装：`apps/paperflow-web/src/ui/data/api.ts`
 - Vite 代理规则：`apps/paperflow-web/vite.config.ts`

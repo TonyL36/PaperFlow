@@ -16,7 +16,8 @@ export function buildReplyDraft(userId: string): string {
 }
 
 export function totalVisibleCommentCount(comments: Comment[]): number {
-  return comments.reduce((sum, comment) => sum + 1 + repliesOf(comment).length, 0);
+  const countNode = (node: Comment): number => 1 + repliesOf(node).reduce((acc, child) => acc + countNode(child), 0);
+  return comments.reduce((sum, comment) => sum + countNode(comment), 0);
 }
 
 export function commentDisplayNameOf(userId: string): string {

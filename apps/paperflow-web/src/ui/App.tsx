@@ -10,6 +10,7 @@ import { AdminMailSettingsPage } from "./pages/AdminMailSettingsPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { FootprintsPage } from "./pages/FootprintsPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { PaperPdfReaderPage } from "./pages/PaperPdfReaderPage";
 import { PathfinderPage } from "./pages/PathfinderPage";
 import { useAuth } from "./auth/AuthContext";
@@ -56,6 +57,14 @@ export function App() {
               element={
                 <RequireAuth>
                   <FootprintsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <RequireAuth>
+                  <NotificationsPage />
                 </RequireAuth>
               }
             />

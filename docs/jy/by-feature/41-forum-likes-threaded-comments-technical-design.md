@@ -1,11 +1,12 @@
-# 41 论坛点赞与子评论技术文档
+# 41 论坛点赞与多层评论技术文档
 
 ## X需求
 
 - 支持文章点赞与取消点赞，详情页实时展示点赞状态与点赞数
 - 支持评论点赞与取消点赞，主评论与子评论均可操作
-- 支持评论子评论（两层），满足“主评论 + 回复”论坛场景
+- 支持评论树（最多 5 层），满足连续讨论与楼中楼场景
 - 保持现有评论审核策略兼容，不破坏收藏与既有帖子阅读链路
+- 支持评论用户卡片与被回复通知闭环
 
 ## 开发方法
 
@@ -26,15 +27,22 @@
   - `POST /api/v1/comments/{commentId}/like`
   - `DELETE /api/v1/comments/{commentId}/like`
   - 实现位置： [CommentsController.java](file:///f:/Gitee/PaperFlow/PaperFlow/backend/services/content-service/src/main/java/com/paperflow/content/api/CommentsController.java)
-- 评论两层结构：
+- 评论多层结构：
   - 创建评论支持 `parentCommentId`
-  - 查询按主评论聚合 `replies`
+  - 查询返回“全部 APPROVED + 当前用户自己的待审/驳回”
+  - 最多支持 5 层深度
   - DTO： [CommentResponse.java](file:///f:/Gitee/PaperFlow/PaperFlow/backend/services/content-service/src/main/java/com/paperflow/content/api/dto/CommentResponse.java)
+- 通知链路：
+  - 直接通过的回复评论即时触发 `COMMENT_REPLY`
+  - 待审核评论在审核通过后触发 `COMMENT_REPLY`
+  - 实现位置： [NotificationService.java](file:///f:/Gitee/PaperFlow/PaperFlow/backend/services/content-service/src/main/java/com/paperflow/content/service/NotificationService.java)、[AdminController.java](file:///f:/Gitee/PaperFlow/PaperFlow/backend/services/content-service/src/main/java/com/paperflow/content/api/AdminController.java)
 
 ### 3) 前端交互改造
 
 - 详情页新增文章点赞按钮与计数
-- 评论区支持点赞、回复、子评论渲染
+- 评论区支持点赞、回复、多层评论渲染、最新/最热排序、回复折叠
+- 用户名优先展示昵称，用户卡片改为点击触发
+- 移除复制链接/举报快捷按钮，减少噪声操作
 - 主要实现： [PostDetailPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PostDetailPage.tsx)
 - API/类型同步： [api.ts](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/data/api.ts)、[types.ts](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/data/types.ts)
 
@@ -42,7 +50,7 @@
 
 ### 后端测试
 
-- 新增集成测试覆盖点赞与子评论闭环：  
+- 新增集成测试覆盖点赞、多层评论、可见性与通知闭环：  
   [EngagementAndCommentsIT.java](file:///f:/Gitee/PaperFlow/PaperFlow/backend/services/content-service/src/test/java/com/paperflow/content/api/EngagementAndCommentsIT.java)
 - 执行命令：
   - `.\.tools\apache-maven-3.9.9\bin\mvn.cmd -pl backend/services/content-service test`
@@ -59,7 +67,8 @@
 ### 回归验证
 
 - 验证收藏接口与收藏按钮行为未退化
-- 验证评论审核开启时，主评论与子评论状态流转一致
+- 验证评论审核开启时，作者可见自己的待审核评论、他人不可见
+- 验证评论审核通过后被回复通知可生成
 - 验证未登录态点赞/回复仍被正确拦截提示
 
 ## 验收与回滚
@@ -67,7 +76,8 @@
 ### 验收标准
 
 - 文章点赞与评论点赞均可“点一次生效、再点取消”
-- 评论可展示两层结构，回复关系正确
+- 评论可展示最多 5 层结构，回复关系正确
+- 评论列表可见性符合“APPROVED + 我的待审/驳回”
 - 刷新后点赞状态与计数回显一致
 - 自动化测试全部通过
 

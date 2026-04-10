@@ -8,6 +8,7 @@ import com.paperflow.content.domain.CommentEntity;
 import com.paperflow.content.domain.PostEntity;
 import com.paperflow.content.repo.CommentRepository;
 import com.paperflow.content.repo.PostRepository;
+import com.paperflow.content.service.NotificationService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
@@ -27,10 +28,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
   private final CommentRepository comments;
   private final PostRepository posts;
+  private final NotificationService notifications;
 
-  public AdminController(CommentRepository comments, PostRepository posts) {
+  public AdminController(CommentRepository comments, PostRepository posts, NotificationService notifications) {
     this.comments = comments;
     this.posts = posts;
+    this.notifications = notifications;
   }
 
   @GetMapping("/comments")
@@ -71,8 +74,12 @@ public class AdminController {
     if (c == null) {
       return ResponseEntity.status(404).body(Envelope.err(safeRequestId(requestId), "RES_NOT_FOUND", "Comment not found", java.util.Map.of()));
     }
+    String before = c.getStatus();
     c.setStatus(req.status());
     comments.save(c);
+    if (!"APPROVED".equals(before) && "APPROVED".equals(c.getStatus())) {
+      notifications.notifyReplyIfNeeded(c);
+    }
     return ResponseEntity.ok(Envelope.ok(
         safeRequestId(requestId),
         toDto(c),

@@ -39,12 +39,23 @@ import {
   visibleReplies
 } from "./postDetailCommentUtils";
 import { formatDateTime, readingTimeMinutes, sourceMeta } from "../utils/format";
+import { normalizeError } from "../utils/errors";
 import { resolvePostPdfUrl } from "../utils/paper";
 
 type DetailData = { post: Post | null; comments: Comment[] };
 type AiMessage = { id: string; role: "assistant" | "user"; content: string; references?: string[] };
 type SelectionPopover = { text: string; left: number; top: number };
 const aiWelcomeMessage: AiMessage = { id: "m_welcome", role: "assistant", content: "你好，我是 PaperFlow 阅读助手。你可以让我总结、解释术语或提炼重点。" };
+const MAX_COMMENT_LENGTH = 2000;
+const MAX_COMMENT_DEPTH = 5;
+function BiliLikeIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={["pf-like-icon", active ? "pf-like-icon--active" : null].filter(Boolean).join(" ")}>
+      <path d="M8.5 10.2V18a1.2 1.2 0 0 1-1.2 1.2H4.9A1.9 1.9 0 0 1 3 17.3v-5.1a1.9 1.9 0 0 1 1.9-1.9h2.4a1.2 1.2 0 0 1 1.2 1.2z" fill="currentColor" opacity={active ? "0.95" : "0.25"} />
+      <path d="M8.5 10.7L11.2 5a2.2 2.2 0 0 1 2-.2 2.2 2.2 0 0 1 1.2 2.5l-.6 3h4.3a2 2 0 0 1 2 2.3l-.8 4.4a2.5 2.5 0 0 1-2.4 2H8.5z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function PostDetailPage() {
   const { postId } = useParams();
@@ -56,12 +67,13 @@ export function PostDetailPage() {
   const [engageError, setEngageError] = useState<unknown | null>(null);
   const [postLikeSubmitting, setPostLikeSubmitting] = useState(false);
   const [commentLikeSubmittingId, setCommentLikeSubmittingId] = useState<string | null>(null);
-  const [replyTarget, setReplyTarget] = useState<{ rootCommentId: string; replyToUserId: string } | null>(null);
+  const [replyTarget, setReplyTarget] = useState<{ parentCommentId: string; replyToUserId: string } | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [commentSortMode, setCommentSortMode] = useState<CommentSortMode>("latest");
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
-  const [hoverUserId, setHoverUserId] = useState<string | null>(null);
+  const [displayComments, setDisplayComments] = useState<Comment[]>([]);
+  const [activeUserCardCommentId, setActiveUserCardCommentId] = useState<string | null>(null);
   const [userCardCache, setUserCardCache] = useState<Record<string, CommentUserCard>>({});
   const [loadingUserCardId, setLoadingUserCardId] = useState<string | null>(null);
   const [commentActionTip, setCommentActionTip] = useState<string | null>(null);
@@ -86,6 +98,10 @@ export function PostDetailPage() {
     },
     [pid, accessToken]
   );
+  useEffect(() => {
+    if (state.status !== "success") return;
+    setDisplayComments(state.data.comments ?? []);
+  }, [state.status, state.data]);
   useEffect(() => {
     if (!aiDraftKey) return;
     try {
@@ -135,9 +151,8 @@ export function PostDetailPage() {
   }
 
   const post = state.data?.post ?? null;
-  const comments = state.data?.comments ?? [];
-  const visibleCommentCount = totalVisibleCommentCount(comments);
-  const sortedComments = useMemo(() => sortedRootComments(comments, commentSortMode), [comments, commentSortMode]);
+  const visibleCommentCount = totalVisibleCommentCount(displayComments);
+  const sortedComments = useMemo(() => sortedRootComments(displayComments, commentSortMode), [displayComments, commentSortMode]);
   const paperPdfUrl = post ? resolvePostPdfUrl(post.formats, post.content) : null;
   const hasPdfFormat = !!paperPdfUrl;
   const canFavorite = auth.state.status === "authenticated" && !!post;
@@ -159,6 +174,41 @@ export function PostDetailPage() {
     setCommentActionTip(text);
     window.setTimeout(() => setCommentActionTip(null), 1800);
   };
+  const validateCommentInput = (raw: string) => {
+    const content = raw.trim();
+    if (!content) {
+      return "评论内容不能为空";
+    }
+    if (content.length > MAX_COMMENT_LENGTH) {
+      return `评论最多 ${MAX_COMMENT_LENGTH} 字`;
+    }
+    return null;
+  };
+  const mergeCreatedComment = (rows: Comment[], created: Comment): Comment[] => {
+    if (!created.parentCommentId) {
+      return [created, ...rows];
+    }
+    let inserted = false;
+    const appendReply = (nodes: Comment[]): Comment[] => {
+      return nodes.map((node) => {
+        if (node.commentId === created.parentCommentId) {
+          const replies = Array.isArray(node.replies) ? node.replies : [];
+          inserted = true;
+          return { ...node, replies: [...replies, created] };
+        }
+        const replies = Array.isArray(node.replies) ? node.replies : [];
+        if (!replies.length) {
+          return node;
+        }
+        return { ...node, replies: appendReply(replies) };
+      });
+    };
+    const next = appendReply(rows);
+    if (inserted) {
+      return next;
+    }
+    return [created, ...next];
+  };
   const ensureUserCard = async (userId: string) => {
     if (!userId || userCardCache[userId] || loadingUserCardId === userId) return;
     setLoadingUserCardId(userId);
@@ -170,30 +220,55 @@ export function PostDetailPage() {
       setLoadingUserCardId((prev) => (prev === userId ? null : prev));
     }
   };
-  const copyCommentLink = async (commentId: string) => {
-    const url = `${window.location.origin}/paperflow/posts/${encodeURIComponent(pid)}#comment-${encodeURIComponent(commentId)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      flashCommentTip("评论链接已复制");
-    } catch {
-      flashCommentTip("复制失败，请手动复制地址栏");
-    }
+  const displayNameOfUser = (userId: string) => userCardCache[userId]?.displayName ?? commentDisplayNameOf(userId);
+  const toggleUserCard = (commentId: string, userId: string) => {
+    setActiveUserCardCommentId((prev) => (prev === commentId ? null : commentId));
+    void ensureUserCard(userId);
   };
-  const reportComment = async (comment: Comment) => {
-    const payload = [
-      "举报评论",
-      `postId=${comment.postId}`,
-      `commentId=${comment.commentId}`,
-      `userId=${comment.userId}`,
-      `content=${comment.content.replace(/\s+/g, " ").slice(0, 120)}`
-    ].join("\n");
-    try {
-      await navigator.clipboard.writeText(payload);
-      flashCommentTip("举报信息已复制，可提交给管理员");
-    } catch {
-      flashCommentTip("复制失败，请稍后重试");
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const collectUserIds = (rows: Comment[]): string[] => {
+      const bucket: string[] = [];
+      const walk = (nodes: Comment[]) => {
+        for (const node of nodes) {
+          if (node.userId) {
+            bucket.push(node.userId);
+          }
+          if (Array.isArray(node.replies) && node.replies.length) {
+            walk(node.replies);
+          }
+        }
+      };
+      walk(rows);
+      return Array.from(new Set(bucket));
+    };
+    const unresolved = collectUserIds(displayComments).filter((id) => id && !userCardCache[id]);
+    if (!unresolved.length) return;
+    Promise.all(
+      unresolved.map(async (id) => {
+        try {
+          const card = await apiGetCommentUserCard(id);
+          return [id, card] as const;
+        } catch {
+          return null;
+        }
+      })
+    ).then((rows) => {
+      if (cancelled) return;
+      const valid = rows.filter((it): it is readonly [string, CommentUserCard] => Array.isArray(it));
+      if (!valid.length) return;
+      setUserCardCache((prev) => {
+        const next = { ...prev };
+        for (const [id, card] of valid) {
+          next[id] = card;
+        }
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayComments, userCardCache]);
   const renderCommentContent = (text: string) => {
     const matched = text.match(/^@([A-Za-z0-9_\-]+)\s+/);
     if (!matched) return text;
@@ -334,10 +409,14 @@ export function PostDetailPage() {
       setAiPending(false);
     }
   };
-  const beginReply = (rootCommentId: string, replyToUserId: string) => {
-    setReplyTarget({ rootCommentId, replyToUserId });
-    setReplyText(buildReplyDraft(replyToUserId));
+  const beginReply = (parentCommentId: string, replyToUserName: string, depth: number) => {
+    if (depth >= MAX_COMMENT_DEPTH) {
+      flashCommentTip(`最多支持 ${MAX_COMMENT_DEPTH} 层评论`);
+      return;
+    }
+    setReplyTarget({ parentCommentId, replyToUserId: replyToUserName });
     setSubmitError(null);
+    setReplyText(buildReplyDraft(replyToUserName));
   };
   const cancelReply = () => {
     setReplyTarget(null);
@@ -380,18 +459,113 @@ export function PostDetailPage() {
   const submitReply = async () => {
     if (auth.state.status !== "authenticated" || !replyTarget) return;
     const content = replyText.trim();
-    if (!content || replySubmitting) return;
+    const validationError = validateCommentInput(content);
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
+    if (replySubmitting) return;
     setReplySubmitting(true);
     setSubmitError(null);
     try {
-      await apiCreateComment(auth.state.accessToken, pid, content, replyTarget.rootCommentId);
+      const created = await apiCreateComment(auth.state.accessToken, pid, content, replyTarget.parentCommentId);
       cancelReply();
-      reload();
+      setDisplayComments((prev) => mergeCreatedComment(prev, created));
+      flashCommentTip(created.status === "APPROVED" ? "回复已发布" : created.status === "PENDING" ? "回复已提交，等待审核" : "回复已提交");
     } catch (e) {
-      setSubmitError(e);
+      const normalized = normalizeError(e);
+      setSubmitError(normalized.message);
     } finally {
       setReplySubmitting(false);
     }
+  };
+  const renderCommentNode = (comment: Comment, depth: number) => {
+    const expanded = expandedReplies[comment.commentId] === true;
+    const visibleReplyRows = visibleReplies(comment, expanded);
+    const hiddenReplyCount = Math.max(repliesOf(comment).length - visibleReplyRows.length, 0);
+    const card = userCardCache[comment.userId];
+    const statusText = comment.status === "PENDING" ? "待审核（仅自己可见）" : comment.status === "REJECTED" ? "已驳回（仅自己可见）" : null;
+    return (
+      <div key={comment.commentId} id={`comment-${comment.commentId}`} className={["pf-comment", depth > 0 ? "pf-comment--reply" : null].filter(Boolean).join(" ")}>
+        <div className="pf-row pf-row--baseline pf-comment__meta">
+          <span
+            className="pf-comment-user"
+            onClick={() => toggleUserCard(comment.commentId, comment.userId)}
+          >
+            <span
+              className="pf-comment-user__avatar"
+              style={{ backgroundColor: `hsl(${commentAvatarHueOf(comment.userId)} 72% 94%)`, color: `hsl(${commentAvatarHueOf(comment.userId)} 52% 32%)` }}
+            >
+              {commentAvatarTextOf(comment.userId)}
+            </span>
+            <span className="pf-comment-user__name">{displayNameOfUser(comment.userId)}</span>
+            {activeUserCardCommentId === comment.commentId ? (
+              <span className="pf-comment-card">
+                <span className="pf-comment-card__title">{displayNameOfUser(comment.userId)}</span>
+                <span className="pf-comment-card__line">ID：{comment.userId}</span>
+                <span className="pf-comment-card__line">
+                  发帖数：{loadingUserCardId === comment.userId && !card ? "加载中..." : (card?.postCount ?? 0)}
+                </span>
+                <span className="pf-comment-card__line">
+                  获赞数：{loadingUserCardId === comment.userId && !card ? "加载中..." : (card?.receivedLikeCount ?? 0)}
+                </span>
+              </span>
+            ) : null}
+          </span>
+          <span className="pf-muted2">{new Date(comment.createdAt).toLocaleString()}</span>
+        </div>
+        <div className="pf-comment__content">{renderCommentContent(comment.content)}</div>
+        {statusText ? <div className="pf-muted2">{statusText}</div> : null}
+        <div className="pf-row pf-comment__actions">
+          <Button
+            onClick={() => void toggleCommentLike(comment)}
+            disabled={auth.state.status !== "authenticated" || commentLikeSubmittingId === comment.commentId}
+            variant={comment.liked ? "primary" : "default"}
+            aria-label={comment.liked ? "取消点赞" : "点赞"}
+            title={comment.liked ? "取消点赞" : "点赞"}
+          >
+            <span className="pf-like-button-content">
+              <BiliLikeIcon active={comment.liked === true} />
+              <span>{likeCountOf(comment)}</span>
+            </span>
+          </Button>
+          <Button onClick={() => beginReply(comment.commentId, displayNameOfUser(comment.userId), depth + 1)} disabled={auth.state.status !== "authenticated"}>
+            回复
+          </Button>
+        </div>
+        {visibleReplyRows.map((reply) => (
+          <div key={reply.commentId}>
+            {renderCommentNode(reply, depth + 1)}
+          </div>
+        ))}
+        {hasHiddenReplies(comment) ? (
+          <div className="pf-row">
+            <Button
+              onClick={() => setExpandedReplies((prev) => ({ ...prev, [comment.commentId]: !expanded }))}
+            >
+              {expanded ? "收起子评论" : `展开更多子评论（+${hiddenReplyCount}）`}
+            </Button>
+          </div>
+        ) : null}
+        {replyTarget?.parentCommentId === comment.commentId ? (
+          <div className="pf-comment-replybox">
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              rows={3}
+              className="pf-textarea"
+              placeholder={`回复 @${replyTarget.replyToUserId}`}
+            />
+            <div className="pf-row" style={{ justifyContent: "flex-end" }}>
+              <Button onClick={cancelReply} disabled={replySubmitting}>取消</Button>
+              <Button variant="primary" onClick={() => void submitReply()} disabled={replySubmitting || !!validateCommentInput(replyText)}>
+                {replySubmitting ? "回复中..." : "提交回复"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -411,6 +585,19 @@ export function PostDetailPage() {
       document.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, true);
+    };
+  }, []);
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest(".pf-comment-user")) return;
+      if (target.closest(".pf-comment-card")) return;
+      setActiveUserCardCommentId(null);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
     };
   }, []);
 
@@ -448,8 +635,11 @@ export function PostDetailPage() {
               </div>
               {auth.state.status === "authenticated" ? (
                 <div className="pf-row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-                  <Button variant={liked ? "primary" : "default"} onClick={() => void togglePostLike()} disabled={postLikeSubmitting}>
-                    {liked ? "取消点赞" : "点赞"} ({postLikeCount})
+                  <Button variant={liked ? "primary" : "default"} onClick={() => void togglePostLike()} disabled={postLikeSubmitting} aria-label={liked ? "取消点赞" : "点赞"} title={liked ? "取消点赞" : "点赞"}>
+                    <span className="pf-like-button-content">
+                      <BiliLikeIcon active={liked} />
+                      <span>{postLikeCount}</span>
+                    </span>
                   </Button>
                   <Button
                     onClick={async () => {
@@ -594,7 +784,7 @@ export function PostDetailPage() {
         <div className="pf-row pf-row--baseline" style={{ justifyContent: "space-between" }}>
           <h3>评论</h3>
           <div className="pf-muted2">
-            共 {visibleCommentCount} 条；展示：APPROVED；创建：{post?.commentModerationEnabled === false ? "APPROVED（即时发布）" : "PENDING（需管理员审核）"}
+            共 {visibleCommentCount} 条；展示：全部已发布 + 我的待审核/驳回；创建：{post?.commentModerationEnabled === false ? "APPROVED（即时发布）" : "PENDING（需管理员审核）"}
           </div>
         </div>
         <div className="pf-row" style={{ gap: 8, marginTop: 10 }}>
@@ -609,144 +799,7 @@ export function PostDetailPage() {
 
         <div className="pf-grid" style={{ marginTop: 12 }}>
           {sortedComments.length === 0 ? <EmptyState>暂无评论</EmptyState> : null}
-          {sortedComments.map((c) => {
-            const expanded = expandedReplies[c.commentId] === true;
-            const visibleReplyRows = visibleReplies(c, expanded);
-            const hiddenReplyCount = Math.max(repliesOf(c).length - visibleReplyRows.length, 0);
-            const card = userCardCache[c.userId];
-            const replyCard = (userId: string) => userCardCache[userId];
-            return (
-            <div key={c.commentId} id={`comment-${c.commentId}`} className="pf-comment">
-              <div className="pf-row pf-row--baseline pf-comment__meta">
-                <span
-                  className="pf-comment-user"
-                  onMouseEnter={() => {
-                    setHoverUserId(c.userId);
-                    void ensureUserCard(c.userId);
-                  }}
-                  onMouseLeave={() => setHoverUserId((prev) => (prev === c.userId ? null : prev))}
-                >
-                  <span
-                    className="pf-comment-user__avatar"
-                    style={{ backgroundColor: `hsl(${commentAvatarHueOf(c.userId)} 72% 94%)`, color: `hsl(${commentAvatarHueOf(c.userId)} 52% 32%)` }}
-                  >
-                    {commentAvatarTextOf(c.userId)}
-                  </span>
-                  <span className="pf-comment-user__name">{commentDisplayNameOf(c.userId)}</span>
-                  {hoverUserId === c.userId ? (
-                    <span className="pf-comment-card">
-                      <span className="pf-comment-card__title">{card?.displayName ?? commentDisplayNameOf(c.userId)}</span>
-                      <span className="pf-comment-card__line">ID：{c.userId}</span>
-                      <span className="pf-comment-card__line">
-                        发帖数：{loadingUserCardId === c.userId && !card ? "加载中..." : (card?.postCount ?? 0)}
-                      </span>
-                      <span className="pf-comment-card__line">
-                        获赞数：{loadingUserCardId === c.userId && !card ? "加载中..." : (card?.receivedLikeCount ?? 0)}
-                      </span>
-                    </span>
-                  ) : null}
-                </span>
-                <span className="pf-muted2">{new Date(c.createdAt).toLocaleString()}</span>
-              </div>
-              <div className="pf-comment__content">{renderCommentContent(c.content)}</div>
-              <div className="pf-row pf-comment__actions">
-                <Button
-                  onClick={() => void toggleCommentLike(c)}
-                  disabled={auth.state.status !== "authenticated" || commentLikeSubmittingId === c.commentId}
-                  variant={c.liked ? "primary" : "default"}
-                >
-                  {c.liked ? "取消点赞" : "点赞"} ({likeCountOf(c)})
-                </Button>
-                <Button
-                  onClick={() => beginReply(c.commentId, c.userId)}
-                  disabled={auth.state.status !== "authenticated"}
-                >
-                  回复
-                </Button>
-                <Button onClick={() => void copyCommentLink(c.commentId)}>复制链接</Button>
-                <Button onClick={() => void reportComment(c)}>举报</Button>
-              </div>
-              {visibleReplyRows.map((reply) => (
-                <div key={reply.commentId} id={`comment-${reply.commentId}`} className="pf-comment pf-comment--reply">
-                  <div className="pf-row pf-row--baseline pf-comment__meta">
-                    <span
-                      className="pf-comment-user"
-                      onMouseEnter={() => {
-                        setHoverUserId(reply.userId);
-                        void ensureUserCard(reply.userId);
-                      }}
-                      onMouseLeave={() => setHoverUserId((prev) => (prev === reply.userId ? null : prev))}
-                    >
-                      <span
-                        className="pf-comment-user__avatar"
-                        style={{ backgroundColor: `hsl(${commentAvatarHueOf(reply.userId)} 72% 94%)`, color: `hsl(${commentAvatarHueOf(reply.userId)} 52% 32%)` }}
-                      >
-                        {commentAvatarTextOf(reply.userId)}
-                      </span>
-                      <span className="pf-comment-user__name">{commentDisplayNameOf(reply.userId)}</span>
-                      {hoverUserId === reply.userId ? (
-                        <span className="pf-comment-card">
-                          <span className="pf-comment-card__title">{replyCard(reply.userId)?.displayName ?? commentDisplayNameOf(reply.userId)}</span>
-                          <span className="pf-comment-card__line">ID：{reply.userId}</span>
-                          <span className="pf-comment-card__line">
-                            发帖数：{loadingUserCardId === reply.userId && !replyCard(reply.userId) ? "加载中..." : (replyCard(reply.userId)?.postCount ?? 0)}
-                          </span>
-                          <span className="pf-comment-card__line">
-                            获赞数：{loadingUserCardId === reply.userId && !replyCard(reply.userId) ? "加载中..." : (replyCard(reply.userId)?.receivedLikeCount ?? 0)}
-                          </span>
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="pf-muted2">{new Date(reply.createdAt).toLocaleString()}</span>
-                  </div>
-                  <div className="pf-comment__content">{renderCommentContent(reply.content)}</div>
-                  <div className="pf-row pf-comment__actions">
-                    <Button
-                      onClick={() => void toggleCommentLike(reply)}
-                      disabled={auth.state.status !== "authenticated" || commentLikeSubmittingId === reply.commentId}
-                      variant={reply.liked ? "primary" : "default"}
-                    >
-                      {reply.liked ? "取消点赞" : "点赞"} ({likeCountOf(reply)})
-                    </Button>
-                    <Button
-                      onClick={() => beginReply(c.commentId, reply.userId)}
-                      disabled={auth.state.status !== "authenticated"}
-                    >
-                      回复
-                    </Button>
-                    <Button onClick={() => void copyCommentLink(reply.commentId)}>复制链接</Button>
-                    <Button onClick={() => void reportComment(reply)}>举报</Button>
-                  </div>
-                </div>
-              ))}
-              {hasHiddenReplies(c) ? (
-                <div className="pf-row">
-                  <Button
-                    onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.commentId]: !expanded }))}
-                  >
-                    {expanded ? "收起子评论" : `展开更多子评论（+${hiddenReplyCount}）`}
-                  </Button>
-                </div>
-              ) : null}
-              {replyTarget?.rootCommentId === c.commentId ? (
-                <div className="pf-comment-replybox">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    rows={3}
-                    className="pf-textarea"
-                    placeholder={`回复 @${replyTarget.replyToUserId}`}
-                  />
-                  <div className="pf-row" style={{ justifyContent: "flex-end" }}>
-                    <Button onClick={cancelReply} disabled={replySubmitting}>取消</Button>
-                    <Button variant="primary" onClick={() => void submitReply()} disabled={replySubmitting || !replyText.trim()}>
-                      {replySubmitting ? "回复中..." : "提交回复"}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )})}
+          {sortedComments.map((c) => renderCommentNode(c, 0))}
         </div>
         {engageError ? <ErrorState error={engageError} title="互动操作失败" /> : null}
 
@@ -770,26 +823,36 @@ export function PostDetailPage() {
                 className="pf-textarea"
                 placeholder="写下你的评论…"
               />
+              <div className="pf-row" style={{ justifyContent: "space-between" }}>
+                <span className="pf-muted2">最多 {MAX_COMMENT_LENGTH} 字</span>
+                <span className="pf-muted2">{commentText.trim().length}/{MAX_COMMENT_LENGTH}</span>
+              </div>
               <div className="pf-row" style={{ justifyContent: "flex-end" }}>
                 <Button
                   variant="primary"
                   onClick={async () => {
                     if (auth.state.status !== "authenticated") return;
                     const content = commentText.trim();
-                    if (!content) return;
+                    const validationError = validateCommentInput(content);
+                    if (validationError) {
+                      setSubmitError(validationError);
+                      return;
+                    }
                     setSubmitting(true);
                     setSubmitError(null);
                     try {
-                      await apiCreateComment(auth.state.accessToken, pid, content);
+                      const created = await apiCreateComment(auth.state.accessToken, pid, content);
                       setCommentText("");
-                      reload();
+                      setDisplayComments((prev) => mergeCreatedComment(prev, created));
+                      flashCommentTip(created.status === "APPROVED" ? "评论已发布" : created.status === "PENDING" ? "评论已提交，等待审核" : "评论已提交");
                     } catch (e) {
-                      setSubmitError(e);
+                      const normalized = normalizeError(e);
+                      setSubmitError(normalized.message);
                     } finally {
                       setSubmitting(false);
                     }
                   }}
-                  disabled={submitting || !commentText.trim()}
+                  disabled={submitting || !!validateCommentInput(commentText)}
                 >
                   {submitting ? "提交中..." : post?.commentModerationEnabled === false ? "提交（即时发布）" : "提交（进入待审核）"}
                 </Button>

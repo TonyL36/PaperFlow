@@ -710,7 +710,7 @@ export function PaperPdfReaderPage() {
               {pdfRenderError ? (
                 <div className="pf-pdf-fallback">
                   PDF 渲染失败，请
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={pdfUrl ?? undefined} target="_blank" rel="noopener noreferrer">
                     打开原始文件
                   </a>
                 </div>

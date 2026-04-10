@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiAdminListComments, apiAdminListUsers, apiAdminUpdateCommentStatus, apiListPosts } from "../data/api";
+import { apiAdminListComments, apiAdminListUsers, apiAdminUpdateCommentStatus, apiAdminUpdatePostCommentModeration, apiListPosts } from "../data/api";
 import type { AdminUser, Comment, Post } from "../data/types";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
@@ -18,6 +18,7 @@ export function AdminCommentsPage() {
   const pageSize = 50;
   const [actionError, setActionError] = useState<unknown | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [policyLoadingPostId, setPolicyLoadingPostId] = useState<string | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -181,6 +182,24 @@ export function AdminCommentsPage() {
                   <div className="pf-admin-comment-card__preview">{c.content}</div>
                 </div>
                 <div className="pf-admin-comment-card__actions">
+                  <Button
+                    onClick={async () => {
+                      if (!post || policyLoadingPostId) return;
+                      setActionError(null);
+                      setPolicyLoadingPostId(post.postId);
+                      try {
+                        await apiAdminUpdatePostCommentModeration(accessToken, post.postId, !moderationEnabled);
+                        reloadContext();
+                      } catch (e) {
+                        setActionError(e);
+                      } finally {
+                        setPolicyLoadingPostId(null);
+                      }
+                    }}
+                    disabled={!post || policyLoadingPostId === post?.postId}
+                  >
+                    {moderationEnabled ? "设为免审核" : "设为需审核"}
+                  </Button>
                   <Button
                     variant="primary"
                     onClick={async () => {

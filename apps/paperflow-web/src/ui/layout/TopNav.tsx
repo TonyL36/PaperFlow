@@ -45,6 +45,12 @@ export function TopNav() {
             >
               <NavTile icon="👣" label="Footprints" />
             </NavLink>
+            <NavLink
+              to="/notifications"
+              className={({ isActive }) => ["pf-navlink", isActive ? "pf-navlink--active" : null].filter(Boolean).join(" ")}
+            >
+              <NavTile icon="🔔" label="Messages" />
+            </NavLink>
           </>
         ) : null}
         {isAdmin ? (

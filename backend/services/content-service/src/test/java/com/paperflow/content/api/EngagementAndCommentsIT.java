@@ -89,8 +89,8 @@ public class EngagementAndCommentsIT {
             .content("""
                 {"postId":"%s","content":"Level3","parentCommentId":"%s"}
                 """.formatted(postId, replyCommentId)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error.code", is("REQ_INVALID")));
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.status", is("APPROVED")));
 
     mvc.perform(post("/posts/" + postId + "/like")
             .header("X-Request-Id", "rid-post-like")
@@ -140,5 +140,57 @@ public class EngagementAndCommentsIT {
             .header("X-Request-Id", "rid-post-unlike")
             .header("X-User-Id", "u_task13_1"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void shows_author_pending_comment_only_to_self() throws Exception {
+    String postId = "post_task13_pending_" + System.nanoTime();
+    String ingestBody = """
+        {
+          "postId": "%s",
+          "title": "Task13 Pending Post",
+          "content": "Task13 Pending Content",
+          "source": "agent-demo",
+          "publishedAt": "%s"
+        }
+        """.formatted(postId, OffsetDateTime.parse("2026-04-04T00:00:00Z"));
+    mvc.perform(post("/internal/agent/posts")
+            .header("X-Request-Id", "rid-ingest-pending")
+            .header("X-Demo-Ingest-Token", "test-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(ingestBody))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.postId", is(postId)));
+
+    mvc.perform(post("/comments")
+            .header("X-Request-Id", "rid-comment-pending-self")
+            .header("X-User-Id", "u_pending_author")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"postId":"%s","content":"  pending only for author  "}
+                """.formatted(postId)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.status", is("PENDING")))
+        .andExpect(jsonPath("$.data.content", is("pending only for author")));
+
+    mvc.perform(get("/comments")
+            .header("X-Request-Id", "rid-comments-list-self")
+            .header("X-User-Id", "u_pending_author")
+            .queryParam("postId", postId)
+            .queryParam("page[number]", "1")
+            .queryParam("page[size]", "20"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.items", hasSize(1)))
+        .andExpect(jsonPath("$.data.items[0].status", is("PENDING")))
+        .andExpect(jsonPath("$.data.items[0].userId", is("u_pending_author")));
+
+    mvc.perform(get("/comments")
+            .header("X-Request-Id", "rid-comments-list-other")
+            .header("X-User-Id", "u_other_user")
+            .queryParam("postId", postId)
+            .queryParam("page[number]", "1")
+            .queryParam("page[size]", "20"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.items", hasSize(0)));
   }
 }

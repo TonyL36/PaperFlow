@@ -12,10 +12,18 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_TIMEOUT_MS = 8000;
+type AuthTransport = {
+  refreshAccessToken: () => Promise<string | null>;
+};
+let authTransport: AuthTransport | null = null;
+
+export function configureHttpAuthTransport(next: AuthTransport | null) {
+  authTransport = next;
+}
 
 export async function httpJson<T>(
   input: string,
-  init: RequestInit & { accessToken?: string; requestId?: string; timeoutMs?: number } = {}
+  init: RequestInit & { accessToken?: string; requestId?: string; timeoutMs?: number; _retriedWithRefresh?: boolean } = {}
 ): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
@@ -57,6 +65,18 @@ export async function httpJson<T>(
   }
 
   if (!resp.ok) {
+    if (
+      resp.status === 401 &&
+      !init._retriedWithRefresh &&
+      !!init.accessToken &&
+      !input.includes("/api/v1/auth/refresh") &&
+      authTransport
+    ) {
+      const refreshed = await authTransport.refreshAccessToken();
+      if (refreshed) {
+        return httpJson<T>(input, { ...init, accessToken: refreshed, _retriedWithRefresh: true });
+      }
+    }
     if (body && isErr(body)) {
       throw new ApiError(body.error.message || `HTTP ${resp.status}`, body.error.code || "SYS_HTTP_ERROR", body.requestId || resp.headers.get("X-Request-Id") || "");
     }

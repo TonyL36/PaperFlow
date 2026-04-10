@@ -13,8 +13,14 @@
 2. 登录：`POST /api/v1/auth/login`
    - 响应 body：`accessToken`
    - 响应头：`Set-Cookie: PF_REFRESH=...; HttpOnly; ...`
-3. accessToken 过期：SPA 调用 `POST /api/v1/auth/refresh` 获取新 accessToken（浏览器自动携带 cookie）
+3. accessToken 过期或临近过期：SPA 自动调用 `POST /api/v1/auth/refresh` 获取新 accessToken（浏览器自动携带 cookie）
 4. 注销：`POST /api/v1/auth/logout`（网关注入 `X-User-Id` 后，下游吊销 refresh token）
+
+前端当前已接入自动续期链路：
+
+- 启动时若本地 accessToken 已过期，先尝试 refresh
+- 请求返回 401 且错误为 token 失效时，自动 refresh 一次并重放原请求
+- 已登录状态下定时 refresh，并在页面回到前台时触发 refresh
 
 ## 关键代码原文 + 解读
 
@@ -136,7 +142,7 @@ public class TokenService {
 
 - `subject(userId)` → JWT 的 `sub`
 - `claim("roles", roles)` → 网关可读出角色并透传给下游服务（管理端鉴权最小闭环）
-- `expiration` → access token 短 TTL（默认 900 秒）
+- `expiration` → access token TTL（当前默认 14400 秒，即 4 小时）
 
 ### 5.3 HTTP API：AuthController
 

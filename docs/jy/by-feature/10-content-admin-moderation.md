@@ -5,16 +5,19 @@
 - 提供最小可运行“管理闭环”：
   - 管理员查看待审核评论列表
   - 管理员将评论置为 `APPROVED` 或 `REJECTED`
+  - 管理员可在评论审核页直接切换帖子“需审核 / 免审核”
 - 管理权限判定最小化：
   - 网关从 JWT 解析 `roles` 并注入 `X-User-Roles`
   - 内容服务按 `ADMIN` 角色判断
+- 评论审核通过后，如为回复评论，会自动触发被回复通知
 
-## API 概览（评论审核）
+## API 概览（管理侧）
 
 - `GET /api/v1/admin/comments?status=PENDING&page[number]=1&page[size]=20`（需要 ADMIN）
 - `PATCH /api/v1/admin/comments/{commentId}`（需要 ADMIN）
+- `PATCH /api/v1/admin/posts/{postId}/comment-moderation`（需要 ADMIN）
 
-补充：文章级审核策略已独立到单独文档 [27-content-post-comment-policy.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/27-content-post-comment-policy.md)。
+补充：文章级审核策略说明详见 [27-content-post-comment-policy.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/27-content-post-comment-policy.md)。
 
 ## 关键代码原文 + 解读
 
@@ -97,9 +100,21 @@ public class AdminController {
 - 更新接口：
   - 先查 comment 是否存在，不存在返回 `404`
   - 再更新状态为 `APPROVED` 或 `REJECTED`（由 DTO 校验约束）
+  - 当评论从非 `APPROVED` 变为 `APPROVED` 时，补发回复通知
+- 文章审核开关接口：
+  - `PATCH /admin/posts/{postId}/comment-moderation`
+  - 用于切换文章 `commentModerationEnabled`
+  - 开启后新评论默认走审核，关闭后新评论可直接公开
+
+## 当前前端配套
+
+- 管理页：`/admin/comments`
+- 支持按状态查看评论列表
+- 支持对当前页评论执行批量通过 / 驳回
+- 支持在评论审核页直接切换文章审核策略
 
 ## 演进方向
 
 - 更严格的权限模型：把角色/权限迁移到用户服务并由网关统一鉴权策略控制
 - 审核审计：记录审核人、审核时间、原因（合规需求）
-- 已有管理端 UI：`/admin/comments` 页面聚焦评论处理；文章是否需要审核改为独立页面 `/admin/posts/moderation`
+- 审核统计：按帖子、按状态、按时间窗口输出积压数据

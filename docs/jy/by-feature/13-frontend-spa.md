@@ -1,4 +1,4 @@
-# 13. 前端 SPA：Notion 风格、/paperflow 子路径、Mock/真实后端双模式
+# 13. 前端 SPA：/paperflow 子路径、统一网关调用、认证续期与多页面路由
 
 本章把前端的工程结构、运行方式、关键代码与“为什么这么做”集中说明，便于你后续扩展成 Notion 更完整的交互体验。
 
@@ -9,6 +9,7 @@
 - 用最小实现跑通“网关 API → 页面交互 → 可视化渲染”
 - 支持 Mock（3151）与真实网关（3151）两种后端来源，前端口固定 9628
 - 支持子路径部署：用户入口统一为 `/paperflow`
+- 统一登录态管理：受保护页面、管理员页面、refresh 自动续期
 
 约束：
 
@@ -86,7 +87,46 @@ proxy: {
 - 生产环境只需要把 `/api/*` 指向网关即可，浏览器同源也更好处理
 - 认证/限流/错误归一化只需要做在网关，前端只负责展示与交互
 
-## 13.6 Notion 风格 UI 的实现方式（轻量）
+## 13.6 当前路由结构与权限边界
+
+当前路由集中在 [App.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/App.tsx)，主要分四类：
+
+- 公共页面：
+  - `/posts`
+  - `/posts/:postId`
+  - `/papers/:postId`
+  - `/viz`
+  - `/pathfinder`
+- 登录页：
+  - `/login`
+- 登录后页面：
+  - `/me`
+  - `/favorites`
+  - `/footprints`
+  - `/notifications`
+- 管理员页面：
+  - `/admin/comments`
+  - `/admin/posts/moderation`
+  - `/admin/users`
+  - `/admin/settings/mail`
+
+权限控制方式：
+
+- `RequireAuth`：未登录跳转 `/login`
+- `RequireAdmin`：非管理员跳转 `/posts`
+
+## 13.7 认证续期机制
+
+当前前端不再只依赖一次性 access token，而是已接入自动续期：
+
+- 启动时若本地 token 已过期，先尝试 refresh
+- 请求遇到 401 时，自动 refresh 一次并重放原请求
+- 已登录状态下定时 refresh
+- 页面从后台切回前台时再次 refresh
+
+这样处理后，SPA 在“长时间开着页面、间歇回来继续用”的场景里更稳定。
+
+## 13.8 Notion 风格 UI 的实现方式（轻量）
 
 整体采用“Shell 布局 + 统一卡片/控件样式 + 留白排版”的方式，尽量接近 Notion 的体验：
 
@@ -100,7 +140,7 @@ proxy: {
 - 内容区支持 block 渲染（markdown / blocks）
 - 右键菜单与 slash menu
 
-## 13.7 运行方式（Mock/真实后端）
+## 13.9 运行方式（Mock/真实后端）
 
 ### 13.7.1 Mock 模式
 
@@ -163,7 +203,17 @@ npm run dev
   - 防火墙提示属于系统行为，允许后即可
   - 脚本已把后端与前端进程用隐藏窗口启动，日志写到 `PaperFlow/.dev/logs/`
 
-## 13.8 可视化页面（验证“业务层 → 可视化”链路）
+## 13.10 前端当前覆盖的业务页
+
+- 帖子流与帖子详情
+- 论文 PDF 阅读页
+- Pathfinder 学习路径页
+- 个人中心、收藏、足迹、消息中心
+- 管理员评论审核、文章审核、用户管理、邮件模板管理
+
+这说明前端已经不再是单一 Demo 页，而是具备完整内容站的基础信息架构。
+
+## 13.11 可视化页面（验证“业务层 → 可视化”链路）
 
 可视化页面：`/paperflow/viz`
 
@@ -175,6 +225,6 @@ npm run dev
 
 - [`VisualizationPage.tsx`](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/VisualizationPage.tsx)
 
-## 13.9 延伸阅读
+## 13.12 延伸阅读
 
 - 阅读体验升级（Feed/Detail/块级正文/错误兜底）：[16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)

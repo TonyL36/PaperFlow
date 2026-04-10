@@ -73,6 +73,18 @@ export type CommentUserCard = {
   receivedLikeCount: number;
 };
 
+export type NotificationItem = {
+  notificationId: string;
+  type: string;
+  title: string;
+  content: string;
+  actorUserId: string;
+  postId: string;
+  targetCommentId: string;
+  createdAt: string;
+  readAt?: string | null;
+};
+
 export type Paged<T> = {
   items: T[];
   page: { number: number; size: number; totalItems?: number; totalPages?: number };

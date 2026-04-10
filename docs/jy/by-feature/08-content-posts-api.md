@@ -5,12 +5,28 @@
 - 给 React SPA 提供“每日更新”页面的数据源
 - 支持分页查询最近帖子（倒序）
 - 支持按 `postId` 查询单条详情
+- 支持帖子点赞/取消点赞
+- 支持基于登录态返回个性化字段（`liked/favorited/lastViewedAt`）
 - 响应遵循统一 Envelope + 最小 HATEOAS links
 
 ## API 概览
 
 - `GET /api/v1/posts?page[number]=1&page[size]=20`
 - `GET /api/v1/posts/{postId}`
+- `POST /api/v1/posts/{postId}/like`（需要登录）
+- `DELETE /api/v1/posts/{postId}/like`（需要登录）
+
+## 当前实现补充（与早期版本差异）
+
+- 列表与详情均接收可选 `X-User-Id`：
+  - 返回 `liked`（当前用户是否点赞）
+  - `likeCount` 为实时聚合值
+- 详情接口在登录态下会写入足迹：
+  - 自动 upsert `post_footprints`
+  - 返回 `favorited` 与 `lastViewedAt`
+- 点赞接口是幂等行为：
+  - 重复点赞不会报错
+  - 取消点赞在不存在时同样返回成功
 
 ## 关键代码原文 + 解读
 
@@ -61,7 +77,7 @@ public class PostsController {
 }
 ```
 
-逐段解释：
+逐段解释（更新后）：
 
 - 分页参数：
   - `page[number]` 从 1 开始，服务端转为 `PageRequest.of(pn - 1, ps)`（Spring Data 页码从 0 开始）
@@ -69,8 +85,14 @@ public class PostsController {
 - 返回结构：
   - `data.items`：帖子列表
   - `data.page`：当前分页元信息（这里先给 number/size，后续可加 totalItems/totalPages）
+- 个性化字段：
+  - `liked`：未登录返回 `null`
+  - `favorited/lastViewedAt`：只在详情接口按登录态计算
 - 错误：
   - 详情不存在返回 `404 RES_NOT_FOUND`
+- 点赞错误：
+  - 未登录返回 `401 AUTH_REQUIRED`
+  - 帖子不存在返回 `404 RES_NOT_FOUND`
 - links：
   - 列表/详情都返回 `self`，保证最小 HATEOAS 约束成立
 

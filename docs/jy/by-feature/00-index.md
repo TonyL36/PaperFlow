@@ -23,10 +23,10 @@
 
 ## 3. 内容服务（content-service）
 
-- 07 每日帖子自动生成： [07-content-daily-post.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/07-content-daily-post.md)
-- 08 帖子查询（列表/详情）： [08-content-posts-api.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/08-content-posts-api.md)
-- 09 评论（创建/展示）： [09-content-comments-api.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/09-content-comments-api.md)
-- 10 评论管理（审核/驳回）： [10-content-admin-moderation.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/10-content-admin-moderation.md)
+- 07 每日帖子自动生成（Scheduler 保底任务）： [07-content-daily-post.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/07-content-daily-post.md)
+- 08 帖子查询与互动（列表/详情/点赞）： [08-content-posts-api.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/08-content-posts-api.md)
+- 09 评论与互动（两级评论/点赞/用户卡片）： [09-content-comments-api.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/09-content-comments-api.md)
+- 10 管理审核（评论状态 + 文章审核开关）： [10-content-admin-moderation.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/10-content-admin-moderation.md)
 - 14 演示接收接口（Agent 推送 → 落库）： [14-content-agent-ingest.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/14-content-agent-ingest.md)
 - 15 演示 Seed + 每日内容升级： [15-content-demo-seed-posts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/15-content-demo-seed-posts.md)
 - 18 收藏与足迹： [18-content-favorites-footprints.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/18-content-favorites-footprints.md)
@@ -35,7 +35,7 @@
 
 ## 4. 文档生成与部署
 
-- 11 Controller 扫描生成文档插件： [11-apidoc-plugin.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/11-apidoc-plugin.md)
+- 11 Controller 扫描生成文档插件： [11-apidoc-plugin.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/11-apidoc-plugin.md)
 - 12 一键部署（dev/test/prod）： [12-deploy.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/12-deploy.md)
 - 19 本地启动与可配置项脚本： [19-local-dev-scripts.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/19-local-dev-scripts.md)
 - 20 项目开发要求总览： [20-project-dev-requirements-overview.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/20-project-dev-requirements-overview.md)

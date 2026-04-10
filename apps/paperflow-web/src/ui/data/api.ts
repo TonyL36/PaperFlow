@@ -4,6 +4,7 @@ import type {
   Comment,
   CommentUserCard,
   MailTemplateSettings,
+  NotificationItem,
   Paged,
   PaperFormat,
   PaperFormatType,
@@ -154,6 +155,11 @@ export async function apiLogin(req: LoginReq): Promise<string> {
   return data.accessToken;
 }
 
+export async function apiRefresh(): Promise<string> {
+  const data = await httpJson<AuthResp>("/api/v1/auth/refresh", { method: "POST", body: JSON.stringify({}) });
+  return data.accessToken;
+}
+
 export async function apiLogout(accessToken: string, signal?: AbortSignal): Promise<void> {
   await httpJson<Record<string, never>>("/api/v1/auth/logout", { method: "POST", accessToken, body: JSON.stringify({}), signal });
 }
@@ -262,6 +268,34 @@ export async function apiUnlikeComment(accessToken: string, commentId: string): 
 
 export async function apiGetCommentUserCard(userId: string, signal?: AbortSignal): Promise<CommentUserCard> {
   return httpJson<CommentUserCard>(`/api/v1/comments/users/${encodeURIComponent(userId)}/card`, { method: "GET", signal });
+}
+
+export async function apiListNotifications(
+  accessToken: string,
+  pageNumber: number,
+  pageSize: number,
+  signal?: AbortSignal
+): Promise<{ items: NotificationItem[]; page: { number: number; size: number }; unreadCount: number }> {
+  return httpJson<{ items: NotificationItem[]; page: { number: number; size: number }; unreadCount: number }>(
+    `/api/v1/notifications?page[number]=${pageNumber}&page[size]=${pageSize}`,
+    { method: "GET", accessToken, signal }
+  );
+}
+
+export async function apiReadNotification(accessToken: string, notificationId: string): Promise<void> {
+  await httpJson<Record<string, never>>(`/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: "POST",
+    accessToken,
+    body: JSON.stringify({})
+  });
+}
+
+export async function apiReadAllNotifications(accessToken: string): Promise<{ updated: number }> {
+  return httpJson<{ updated: number }>(`/api/v1/notifications/read-all`, {
+    method: "POST",
+    accessToken,
+    body: JSON.stringify({})
+  });
 }
 
 export async function apiAdminListComments(

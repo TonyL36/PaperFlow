@@ -1,4 +1,4 @@
-# 16 前端：阅读体验升级（Notion/Medium 风格 Feed + Detail + 块级正文）
+# 16 前端：阅读体验（Feed + Detail + 评论互动 + 错误兜底）
 
 本章解释“为什么现在看起来更像给用户看的站”，以及实现上做了哪些取舍。
 
@@ -14,6 +14,7 @@
 
 - 列表页不再出现“数据来源：/api/v1/posts”这类工程文案，转为面向用户的文案与信息层级
 - 详情页正文支持块级排版：标题/列表/引用/代码块
+- 详情页评论区支持排序、回复、点赞、昵称卡片与状态提示
 - 后端/网关异常时不出现“无限 loading”，且错误信息不崩溃（例如 `reading 'message'`）
 
 边界：
@@ -31,8 +32,8 @@
 2) 详情页请求：
 
 - `GET /api/v1/posts/{postId}`
-- `GET /api/v1/comments?postId={postId}`（只展示 APPROVED）
-- 渲染为文章页：cover + icon + title + meta + blocks
+- `GET /api/v1/comments?postId={postId}`（返回“APPROVED + 我的待审/驳回”）
+- 渲染为文章页：cover + icon + title + meta + blocks + 评论互动区
 
 3) 错误与兜底：
 
@@ -102,7 +103,19 @@
 解释：
 
 - cover/icon/title/meta 这套结构更像 Notion/Medium 的“文章页”，不是纯 CRUD 详情页。
-- `readingTimeMinutes` 是轻量的阅读时长估算（演示用），增强“阅读产品”的感觉。
+- `readingTimeMinutes` 是轻量的阅读时长估算，增强“阅读产品”的感觉。
+
+### 16.2.1 详情页互动补齐：点赞、收藏、足迹、评论
+
+当前详情页不只是“显示正文”，还承担互动聚合：
+
+- 文章点赞与收藏
+- 阅读足迹展示
+- 评论区排序（最新 / 最热）
+- 评论回复、点赞、状态提示
+- 点击昵称展示用户卡片
+
+这使详情页从简单 CRUD 详情页，变成一张完整阅读工作台。
 
 ### 16.3 块级正文渲染：RichText（轻量规则，不引库）
 
@@ -155,6 +168,19 @@ if (!resp.ok) {
 - 人类可读 message
 - `code` 与 `requestId`（便于你去网关/后端日志定位）
 
+### 16.5 评论体验：从“可用”到“可解释”
+
+当前评论区重点不是堆更多按钮，而是让用户理解系统状态：
+
+- 评论支持“最新 / 最热”排序
+- 最多 5 层回复
+- 回复草稿优先使用昵称，不直接暴露用户 ID
+- 待审核 / 驳回状态直接可见
+- 用户卡片改为点击触发，避免 hover 误触
+- 点赞按钮图标化，交互更轻量
+
+这些能力都集中在 [PostDetailPage.tsx](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/PostDetailPage.tsx) 与 [postDetailCommentUtils.ts](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/pages/postDetailCommentUtils.ts)。
+
 ## 样式：与 Notion/Medium 的相似点
 
 样式位置：[global.css](file:///f:/Gitee/PaperFlow/PaperFlow/apps/paperflow-web/src/ui/styles/global.css)
@@ -175,9 +201,11 @@ if (!resp.ok) {
 - 详情页内容“还是一坨”
   - 确认帖子正文内容是否包含块结构（`#`、`-`、`>`、```）
   - 当前 RichText 是规则解析，不支持所有 Markdown 语法
+- 闲置后重新操作掉登录
+  - 当前前端已接入 refresh 自动续期
+  - 若仍掉登录，优先检查 refresh cookie、401 返回与网关日志
 
 ## 演进方向
 
 - 引入结构化 blocks（后端存 JSON blocks，前端严格渲染）以替代“文本约定解析”
 - 增加图片/链接/脚注/表格与更精细的 typography（此时再考虑引入 Markdown 解析库）
-

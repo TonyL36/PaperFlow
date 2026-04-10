@@ -1059,6 +1059,7 @@ button:disabled{
   align-items: center;
   gap: 8px;
   position: relative;
+  cursor: pointer;
 }
 .pf-comment-user__avatar{
   width: 24px;
@@ -1107,6 +1108,18 @@ button:disabled{
 .pf-comment__actions{
   gap: 8px;
   flex-wrap: wrap;
+}
+.pf-like-button-content{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+.pf-like-icon{
+  transition: transform .18s ease, color .18s ease;
+}
+.pf-like-icon--active{
+  transform: scale(1.05);
 }
 .pf-comment-replybox{
   margin-top: 6px;

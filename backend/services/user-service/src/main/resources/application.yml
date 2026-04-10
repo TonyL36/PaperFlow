@@ -40,7 +40,7 @@ spring:
 paperflow:
   auth:
     jwtSecret: ${PF_JWT_SECRET:change-me-in-dev-change-me-in-dev-change-me}
-    accessTokenTtlSeconds: ${PF_ACCESS_TTL:900}
+    accessTokenTtlSeconds: ${PF_ACCESS_TTL:14400}
     refreshTokenTtlSeconds: ${PF_REFRESH_TTL:2592000}
   qq:
     mock: ${PF_QQ_MOCK:true}

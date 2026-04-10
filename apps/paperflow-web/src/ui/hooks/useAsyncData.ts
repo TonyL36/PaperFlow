@@ -14,6 +14,7 @@ export type UseAsyncDataResult<T> = {
 export function useAsyncData<T>(loader: (signal: AbortSignal) => Promise<T>, deps: unknown[]): UseAsyncDataResult<T> {
   const [nonce, setNonce] = useState(0);
   const mountedRef = useRef(true);
+  const runIdRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -26,21 +27,22 @@ export function useAsyncData<T>(loader: (signal: AbortSignal) => Promise<T>, dep
 
   useEffect(() => {
     const ac = new AbortController();
+    runIdRef.current += 1;
+    const currentRunId = runIdRef.current;
     setState((prev) => ({ status: "loading", data: prev.data, error: null }));
 
     (async () => {
       try {
         const data = await loader(ac.signal);
-        if (!mountedRef.current || ac.signal.aborted) return;
+        if (!mountedRef.current || currentRunId !== runIdRef.current) return;
         setState({ status: "success", data, error: null });
       } catch (e) {
-        if (!mountedRef.current || ac.signal.aborted) return;
+        if (!mountedRef.current || currentRunId !== runIdRef.current) return;
         setState((prev) => ({ status: "error", data: prev.data, error: e }));
       }
     })();
 
     return () => {
-      ac.abort();
     };
   }, [...deps, nonce]);
 
