@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist/types/src/display/api";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { shouldSkipPdfWatermarkItem } from "./paperPdfTextLayer";
 import { AiMarkdown } from "../components/AiMarkdown";
 import { useAuth } from "../auth/AuthContext";
 import { Card } from "../components/Card";
@@ -19,6 +20,10 @@ GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 type AiMessage = { id: string; role: "assistant" | "user"; content: string; references?: string[] };
 type SelectionPopover = { text: string; left: number; top: number };
+type PdfMainPageLayout = { logicalWidth: number; logicalHeight: number; displayZoom: number };
+
+const PDF_LOGICAL_PAGE_WIDTH = 920;
+const PDF_MAIN_PAGE_SIDE_GAP = 24;
 
 function levelLabel(level: PaperHighlightLevel): string {
   if (level === "claim") return "核心结论";
@@ -137,6 +142,7 @@ export function PaperPdfReaderPage() {
   const [visibleMainPages, setVisibleMainPages] = useState<Set<number>>(new Set());
   const [renderedThumbPages, setRenderedThumbPages] = useState<Set<number>>(new Set());
   const [renderedMainPages, setRenderedMainPages] = useState<Set<number>>(new Set());
+  const [mainPageLayouts, setMainPageLayouts] = useState<Map<number, PdfMainPageLayout>>(new Map());
   const [selectionPopover, setSelectionPopover] = useState<SelectionPopover | null>(null);
   const mainViewportRef = useRef<HTMLDivElement | null>(null);
   const thumbCanvasRefs = useRef<Map<number, HTMLCanvasElement | null>>(new Map());
@@ -224,6 +230,7 @@ export function PaperPdfReaderPage() {
       setVisibleMainPages(new Set());
       setRenderedThumbPages(new Set());
       setRenderedMainPages(new Set());
+      setMainPageLayouts(new Map());
       return;
     }
     const initialThumbs = new Set<number>();
@@ -238,6 +245,7 @@ export function PaperPdfReaderPage() {
     setVisibleMainPages(initialMainPages);
     setRenderedThumbPages(new Set());
     setRenderedMainPages(new Set());
+    setMainPageLayouts(new Map());
   }, [pdfDoc]);
 
   useEffect(() => {
@@ -247,9 +255,36 @@ export function PaperPdfReaderPage() {
   }, []);
 
   useEffect(() => {
-    if (!pdfDoc) return;
-    setRenderedMainPages(new Set());
-  }, [pdfDoc, pdfResizeTick]);
+    if (!mainViewportRef.current || !mainPageLayouts.size) return;
+    const availableWidth = Math.max(180, mainViewportRef.current.clientWidth - PDF_MAIN_PAGE_SIDE_GAP);
+    setMainPageLayouts((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      prev.forEach((layout, pageNo) => {
+        const displayZoom = Math.min(1, Math.max(0.4, availableWidth / layout.logicalWidth));
+        if (Math.abs(layout.displayZoom - displayZoom) > 0.0001) {
+          const pageRoot = mainPageRefs.current.get(pageNo);
+          const shell = pageRoot?.querySelector(".pf-pdf-main-page-shell");
+          const zoom = pageRoot?.querySelector(".pf-pdf-main-page-zoom");
+          const content = pageRoot?.querySelector(".pf-pdf-main-page-content");
+          if (shell instanceof HTMLElement) {
+            shell.style.width = `${layout.logicalWidth}px`;
+            shell.style.height = `${layout.logicalHeight * displayZoom}px`;
+          }
+          if (zoom instanceof HTMLElement) {
+            zoom.style.zoom = String(displayZoom);
+          }
+          if (content instanceof HTMLElement) {
+            content.style.width = `${layout.logicalWidth}px`;
+            content.style.height = `${layout.logicalHeight}px`;
+          }
+          next.set(pageNo, { ...layout, displayZoom });
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [pdfResizeTick, mainPageLayouts]);
 
   useEffect(() => {
     if (!thumbnailItems.length) return;
@@ -375,40 +410,84 @@ export function PaperPdfReaderPage() {
           const page = await pdfDoc.getPage(pageNo);
           if (cancelled || !mainViewportRef.current) break;
           const baseViewport = page.getViewport({ scale: 1 });
-          const containerWidth = Math.max(180, mainViewportRef.current.clientWidth - 24);
-          const targetWidth = Math.floor(containerWidth * 0.985);
-          const scale = targetWidth / baseViewport.width;
+          const logicalScale = PDF_LOGICAL_PAGE_WIDTH / baseViewport.width;
+          const logicalViewport = page.getViewport({ scale: logicalScale });
+          const availableWidth = Math.max(180, mainViewportRef.current.clientWidth - PDF_MAIN_PAGE_SIDE_GAP);
+          const displayZoom = Math.min(1, Math.max(0.4, availableWidth / logicalViewport.width));
           const dpr = window.devicePixelRatio || 1;
-          const viewportCss = page.getViewport({ scale });
-          const viewport = page.getViewport({ scale: scale * dpr });
+          const viewport = page.getViewport({ scale: logicalScale * dpr });
           const ctx = canvas.getContext("2d");
           if (!ctx) continue;
+          const pageRoot = mainPageRefs.current.get(pageNo);
+          const shell = pageRoot?.querySelector(".pf-pdf-main-page-shell");
+          const zoom = pageRoot?.querySelector(".pf-pdf-main-page-zoom");
+          const content = pageRoot?.querySelector(".pf-pdf-main-page-content");
+          if (shell instanceof HTMLElement) {
+            shell.style.width = `${Math.floor(logicalViewport.width)}px`;
+            shell.style.height = `${Math.floor(logicalViewport.height * displayZoom)}px`;
+          }
+          if (zoom instanceof HTMLElement) {
+            zoom.style.zoom = String(displayZoom);
+          }
+          if (content instanceof HTMLElement) {
+            content.style.width = `${Math.floor(logicalViewport.width)}px`;
+            content.style.height = `${Math.floor(logicalViewport.height)}px`;
+          }
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
-          canvas.style.width = `${Math.floor(viewportCss.width)}px`;
-          canvas.style.height = `${Math.floor(viewportCss.height)}px`;
+          canvas.style.width = `${Math.floor(logicalViewport.width)}px`;
+          canvas.style.height = `${Math.floor(logicalViewport.height)}px`;
           const task = page.render({ canvasContext: ctx, viewport });
           tasks.push(task);
           await task.promise;
           const textLayer = textLayerRefs.current.get(pageNo);
           if (textLayer) {
             textLayer.replaceChildren();
-            textLayer.style.width = `${Math.floor(viewportCss.width)}px`;
-            textLayer.style.height = `${Math.floor(viewportCss.height)}px`;
+            textLayer.style.width = `${Math.floor(logicalViewport.width)}px`;
+            textLayer.style.height = `${Math.floor(logicalViewport.height)}px`;
             const textContent = await page.getTextContent();
-            for (const it of textContent.items as Array<{ str?: string; transform?: number[] }>) {
+            for (const it of textContent.items as Array<{ str?: string; transform?: number[]; width?: number }>) {
               if (!it?.str || !it.transform || it.str.trim().length === 0) continue;
+              if (shouldSkipPdfWatermarkItem({ text: it.str, transform: it.transform, pageWidth: logicalViewport.width })) {
+                continue;
+              }
               const t = it.transform;
-              const fontSize = Math.max(8, Math.hypot(t[2], t[3]) * scale);
+              const fontSize = Math.max(8, Math.hypot(t[2], t[3]) * logicalScale);
               const span = document.createElement("span");
               span.textContent = it.str;
-              span.style.left = `${t[4] * scale}px`;
-              span.style.top = `${Math.max(0, viewportCss.height - t[5] * scale - fontSize)}px`;
+              span.style.left = `${t[4] * logicalScale}px`;
+              span.style.top = `${Math.max(0, logicalViewport.height - t[5] * logicalScale - fontSize)}px`;
               span.style.fontSize = `${fontSize}px`;
               textLayer.appendChild(span);
+              if (typeof it.width === "number" && it.width > 0) {
+                const expectedWidth = it.width * logicalScale;
+                const measuredWidth = span.getBoundingClientRect().width;
+                if (measuredWidth > 0) {
+                  const scaleX = expectedWidth / measuredWidth;
+                  if (Number.isFinite(scaleX) && scaleX > 0.5 && scaleX < 2 && Math.abs(scaleX - 1) > 0.02) {
+                    span.style.transform = `scaleX(${scaleX})`;
+                  }
+                }
+              }
             }
           }
           if (!cancelled) {
+            setMainPageLayouts((prev) => {
+              const logicalWidth = Math.floor(logicalViewport.width);
+              const logicalHeight = Math.floor(logicalViewport.height);
+              const current = prev.get(pageNo);
+              if (
+                current &&
+                current.logicalWidth === logicalWidth &&
+                current.logicalHeight === logicalHeight &&
+                Math.abs(current.displayZoom - displayZoom) <= 0.0001
+              ) {
+                return prev;
+              }
+              const next = new Map(prev);
+              next.set(pageNo, { logicalWidth, logicalHeight, displayZoom });
+              return next;
+            });
             setRenderedMainPages((prev) => {
               if (prev.has(pageNo)) return prev;
               const next = new Set(prev);
@@ -428,7 +507,7 @@ export function PaperPdfReaderPage() {
       cancelled = true;
       tasks.forEach((task) => task.cancel());
     };
-  }, [pdfDoc, visibleMainPages, pdfResizeTick]);
+  }, [pdfDoc, visibleMainPages]);
 
   useEffect(() => {
     if (!pdfDoc || !visibleThumbPages.size) return;
@@ -722,12 +801,40 @@ export function PaperPdfReaderPage() {
                     ref={(el) => mainPageRefs.current.set(page, el)}
                     className="pf-pdf-main-page"
                   >
-                    {!renderedMainPages.has(page) ? <div className="pf-pdf-main-skeleton" /> : null}
-                    <canvas
-                      ref={(el) => mainCanvasRefs.current.set(page, el)}
-                      className={["pf-pdf-main-canvas", renderedMainPages.has(page) ? "" : "pf-pdf-main-canvas--hidden"].join(" ").trim()}
-                    />
-                    <div ref={(el) => textLayerRefs.current.set(page, el)} className="pf-pdf-text-layer" />
+                    <div
+                      className="pf-pdf-main-page-shell"
+                      style={
+                        mainPageLayouts.get(page)
+                          ? {
+                              height: `${mainPageLayouts.get(page)!.logicalHeight * mainPageLayouts.get(page)!.displayZoom}px`
+                            }
+                          : undefined
+                      }
+                    >
+                      {!renderedMainPages.has(page) ? <div className="pf-pdf-main-skeleton" /> : null}
+                      <div
+                        className="pf-pdf-main-page-zoom"
+                        style={mainPageLayouts.get(page) ? { zoom: mainPageLayouts.get(page)!.displayZoom } : undefined}
+                      >
+                        <div
+                          className="pf-pdf-main-page-content"
+                          style={
+                            mainPageLayouts.get(page)
+                              ? {
+                                  width: `${mainPageLayouts.get(page)!.logicalWidth}px`,
+                                  height: `${mainPageLayouts.get(page)!.logicalHeight}px`
+                                }
+                              : undefined
+                          }
+                        >
+                          <canvas
+                            ref={(el) => mainCanvasRefs.current.set(page, el)}
+                            className={["pf-pdf-main-canvas", renderedMainPages.has(page) ? "" : "pf-pdf-main-canvas--hidden"].join(" ").trim()}
+                          />
+                          <div ref={(el) => textLayerRefs.current.set(page, el)} className="pf-pdf-text-layer" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}

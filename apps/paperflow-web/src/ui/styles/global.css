@@ -647,6 +647,18 @@ button:disabled{
   display: grid;
   justify-items: center;
 }
+.pf-pdf-main-page-shell{
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.pf-pdf-main-page-zoom{
+  transform-origin: top center;
+}
+.pf-pdf-main-page-content{
+  position: relative;
+}
 .pf-pdf-main-skeleton{
   width: min(920px, 90%);
   height: 68vh;
@@ -667,16 +679,31 @@ button:disabled{
 }
 .pf-pdf-text-layer{
   position: absolute;
-  inset: 0 auto auto 0;
+  inset: 0;
   user-select: text;
   pointer-events: auto;
+  cursor: text;
 }
 .pf-pdf-text-layer span{
   position: absolute;
+  display: block;
   white-space: pre;
   transform-origin: 0 0;
-  color: rgba(0, 0, 0, 0.01);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
   line-height: 1;
+}
+.pf-pdf-text-layer ::selection{
+  background: rgba(46, 115, 230, 0.28);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+.pf-pdf-text-layer ::-moz-selection{
+  background: rgba(46, 115, 230, 0.28);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
 }
 .pf-pdf-canvas-loading{
   position: absolute;
