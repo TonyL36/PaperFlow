@@ -1,10 +1,15 @@
 package com.paperflow.user.api;
 
+import com.paperflow.user.repo.UserRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +21,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/public/users")
 public class PublicUserAssetsController {
+  private final UserRepository users;
+
+  public PublicUserAssetsController(UserRepository users) {
+    this.users = users;
+  }
+
+  @GetMapping("/{userId}")
+  public ResponseEntity<Envelope<Map<String, Object>>> getPublicProfile(
+      @PathVariable("userId") String userId
+  ) {
+    if (userId == null || userId.isBlank()) {
+      return ResponseEntity.status(404).body(Envelope.err("", "RES_NOT_FOUND", "User not found", Map.of()));
+    }
+    var user = users.findById(userId.trim()).orElse(null);
+    if (user == null) {
+      return ResponseEntity.status(404).body(Envelope.err("", "RES_NOT_FOUND", "User not found", Map.of()));
+    }
+    Map<String, Object> profile = new LinkedHashMap<>();
+    profile.put("userId", user.getId());
+    profile.put("displayName", user.getDisplayName());
+    profile.put("avatarUrl", user.getAvatarUrl());
+    return ResponseEntity.ok(Envelope.ok(
+        "",
+        profile,
+        List.of(new Envelope.Link("self", "/api/v1/public/users/" + user.getId(), Optional.of("GET"), Optional.empty()))
+    ));
+  }
+
   @GetMapping("/avatars/{userId}")
   public ResponseEntity<?> getAvatar(
       @PathVariable("userId") String userId

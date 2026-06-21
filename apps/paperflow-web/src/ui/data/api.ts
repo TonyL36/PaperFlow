@@ -267,7 +267,16 @@ export async function apiUnlikeComment(accessToken: string, commentId: string): 
 }
 
 export async function apiGetCommentUserCard(userId: string, signal?: AbortSignal): Promise<CommentUserCard> {
-  return httpJson<CommentUserCard>(`/api/v1/comments/users/${encodeURIComponent(userId)}/card`, { method: "GET", signal });
+  const encoded = encodeURIComponent(userId);
+  const [card, profile] = await Promise.all([
+    httpJson<CommentUserCard>(`/api/v1/comments/users/${encoded}/card`, { method: "GET", signal }),
+    httpJson<{ userId: string; displayName: string; avatarUrl?: string | null }>(`/api/v1/public/users/${encoded}`, { method: "GET", signal }).catch(() => null)
+  ]);
+  return {
+    ...card,
+    displayName: profile?.displayName?.trim() || card.displayName,
+    avatarUrl: profile?.avatarUrl ?? card.avatarUrl ?? null
+  };
 }
 
 export async function apiListNotifications(

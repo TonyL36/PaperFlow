@@ -69,6 +69,7 @@ export type Comment = {
 export type CommentUserCard = {
   userId: string;
   displayName: string;
+  avatarUrl?: string | null;
   postCount: number;
   receivedLikeCount: number;
 };

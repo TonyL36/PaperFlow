@@ -220,7 +220,8 @@ export function PostDetailPage() {
       setLoadingUserCardId((prev) => (prev === userId ? null : prev));
     }
   };
-  const displayNameOfUser = (userId: string) => userCardCache[userId]?.displayName ?? commentDisplayNameOf(userId);
+  const displayNameOfUser = (userId: string) => commentDisplayNameOf(userId, userCardCache[userId]?.displayName);
+  const avatarUrlOfUser = (userId: string) => userCardCache[userId]?.avatarUrl ?? null;
   const toggleUserCard = (commentId: string, userId: string) => {
     setActiveUserCardCommentId((prev) => (prev === commentId ? null : commentId));
     void ensureUserCard(userId);
@@ -496,7 +497,15 @@ export function PostDetailPage() {
               className="pf-comment-user__avatar"
               style={{ backgroundColor: `hsl(${commentAvatarHueOf(comment.userId)} 72% 94%)`, color: `hsl(${commentAvatarHueOf(comment.userId)} 52% 32%)` }}
             >
-              {commentAvatarTextOf(comment.userId)}
+              {avatarUrlOfUser(comment.userId) ? (
+                <img
+                  src={avatarUrlOfUser(comment.userId) ?? undefined}
+                  alt={`${displayNameOfUser(comment.userId)} 的头像`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                />
+              ) : (
+                commentAvatarTextOf(comment.userId, displayNameOfUser(comment.userId))
+              )}
             </span>
             <span className="pf-comment-user__name">{displayNameOfUser(comment.userId)}</span>
             {activeUserCardCommentId === comment.commentId ? (

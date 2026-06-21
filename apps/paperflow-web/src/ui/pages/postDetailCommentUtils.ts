@@ -20,14 +20,16 @@ export function totalVisibleCommentCount(comments: Comment[]): number {
   return comments.reduce((sum, comment) => sum + countNode(comment), 0);
 }
 
-export function commentDisplayNameOf(userId: string): string {
+export function commentDisplayNameOf(userId: string, displayName?: string | null): string {
+  const provided = (displayName ?? "").trim();
+  if (provided) return provided;
   const raw = (userId ?? "").trim();
   if (!raw) return "用户";
   return raw.startsWith("u_") ? raw.slice(2) : raw;
 }
 
-export function commentAvatarTextOf(userId: string): string {
-  const name = commentDisplayNameOf(userId);
+export function commentAvatarTextOf(userId: string, displayName?: string | null): string {
+  const name = commentDisplayNameOf(userId, displayName);
   return (name[0] ?? "U").toUpperCase();
 }
 

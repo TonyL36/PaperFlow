@@ -34,9 +34,11 @@ describe("postDetailCommentUtils", () => {
     expect(buildReplyDraft("u_reply")).toBe("@u_reply ");
   });
 
-  it("评论用户展示信息", () => {
+  it("评论用户展示信息优先使用真实展示名", () => {
+    expect(commentDisplayNameOf("u_task13_1", "张三")).toBe("张三");
     expect(commentDisplayNameOf("u_task13_1")).toBe("task13_1");
     expect(commentDisplayNameOf("")).toBe("用户");
+    expect(commentAvatarTextOf("u_task13_1", "张三")).toBe("张");
     expect(commentAvatarTextOf("u_task13_1")).toBe("T");
     expect(commentAvatarHueOf("u_task13_1")).toBeGreaterThanOrEqual(0);
     expect(commentAvatarHueOf("u_task13_1")).toBeLessThan(360);
