@@ -61,6 +61,8 @@
 - 周报索引（近三周）： [weekly/00-index.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/weekly/00-index.md)
 - 2026-04-01：Markdown 渲染修复、中文编码修复、重写回灌与 502 排障： [2026-04-01.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-01.md)
 - 2026-04-04：scheduler 模板帖治理、topic 板块扩展与云端定时配置： [2026-04-04.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-04.md)
+- 2026-06-20：PDF 选区技术文档收口与阅读体验问题复盘： [2026-06-20.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-06-20.md)
+- 2026-06-21：评论昵称头像联动、云端热修复与部署稿件整理： [2026-06-21.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-06-21.md)
 
 ## 5. 前端（paperflow-web）
 
@@ -68,6 +70,8 @@
 - 16 阅读体验升级（Feed/Detail/块级正文/错误兜底）： [16-frontend-reading-experience.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/16-frontend-reading-experience.md)
 - 22 AI 阅读 + Pathfinder（论文阅读 + 学习路径对话）： [22-frontend-ai-reading-pathfinder.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/by-feature/22-frontend-ai-reading-pathfinder.md)
 - 28 论文 Agent 传输与高亮协议： [28-paper-agent-protocol-and-highlights.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/28-paper-agent-protocol-and-highlights.md)
+- 42 PDF 文字选区对齐与边缘水印过滤技术文档： [42-frontend-pdf-selection-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/42-frontend-pdf-selection-technical-design.md)
+- 43 评论展示最新资料联动与云端热修复技术文档： [43-comment-latest-profile-sync-and-cloud-hotfix.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/43-comment-latest-profile-sync-and-cloud-hotfix.md)
 
 ## 6. 项目定义与需求
 
