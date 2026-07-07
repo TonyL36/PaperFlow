@@ -195,6 +195,316 @@ curl -X POST "http://47.109.193.180:9628/api/v1/pathfinder/sessions/plan" \
 
 ---
 
+## 4.5 Agent 更新文章后传给 Java 后端的过程
+
+这一段描述的是：**Agent 完成文章生成或更新后，如何把结果传给 Java Content Service 入库。**
+
+当前有两类写入目标：
+
+- 普通文章：`POST /api/v1/internal/agent/posts`
+- 论文类文章：`POST /api/v1/internal/agent/papers`
+
+它们都会先经过网关，再转发到 `content-service`。
+
+### 过程说明
+
+1. Agent 侧完成文章生成、润色或结构化整理
+2. Agent 把整理后的内容组装成 JSON 请求体
+3. Agent 调用网关入口 `/api/v1/internal/agent/...`
+4. Gateway 根据路由规则转发到 Java `content-service`
+5. Java 后端检查：
+   - `paperflow.demo-ingest.enabled` 是否开启
+   - `X-Demo-Ingest-Token` 是否正确
+6. Java 后端把请求体转成 `PostEntity` 并写入数据库
+7. 返回统一 Envelope 响应，Agent 可据此确认是否写入成功
+
+### 时序图
+
+```text
+Agent
+  |
+  | POST /api/v1/internal/agent/posts 或 /api/v1/internal/agent/papers
+  | Header: X-Demo-Ingest-Token
+  | Body: title/content/source/...
+  v
+API Gateway
+  |
+  | route /api/v1/internal/agent/**
+  v
+Content Service (Java)
+  |
+  | 校验 demo-ingest 开关与 token
+  | 普通文章：不存在则创建，存在则直接返回
+  | 论文文章：按 postId 执行 upsert
+  v
+PostRepository / PostgreSQL
+  |
+  | 保存 PostEntity
+  v
+统一 Envelope 响应
+```
+
+### 网关转发入口
+
+`/api/v1/internal/agent/**` 已通过网关路由到内容服务：
+
+```yaml
+- id: content-internal-agent
+  uri: ${CONTENT_SERVICE_URL:http://localhost:8082}
+  predicates:
+    - Path=/api/v1/internal/agent,/api/v1/internal/agent/**
+```
+
+### 服务端开关
+
+入库接口是否可用，受以下配置控制：
+
+```java
+@ConfigurationProperties(prefix = "paperflow.demo-ingest")
+public class DemoIngestProperties {
+  private boolean enabled;
+  private String token;
+}
+```
+
+也就是说：
+
+- `enabled=false`：接口直接不可用，返回 `404`
+- 设置了 `token`：Agent 必须带正确的 `X-Demo-Ingest-Token`
+
+### 返回格式
+
+Java 侧统一返回 Envelope：
+
+```json
+{
+  "requestId": "req-001",
+  "data": {},
+  "links": []
+}
+```
+
+失败时：
+
+```json
+{
+  "requestId": "req-001",
+  "error": {
+    "code": "AUTH_FORBIDDEN",
+    "message": "Forbidden"
+  }
+}
+```
+
+### 普通文章接口说明
+
+- 路径：`POST /api/v1/internal/agent/posts`
+- DTO 字段：
+  - `postId`
+  - `userId`
+  - `title`
+  - `content`
+  - `source`
+  - `publishedAt`
+
+请求示例：
+
+```json
+{
+  "postId": "post_agent_001",
+  "userId": "u_agent",
+  "title": "一篇更新后的文章标题",
+  "content": "文章正文内容",
+  "source": "agent",
+  "publishedAt": "2026-04-08T12:00:00Z"
+}
+```
+
+普通文章的处理特点：
+
+- 若 `postId` 不存在：创建新文章
+- 若 `postId` 已存在：直接返回已有文章，不覆盖原文
+
+核心逻辑：
+
+```java
+String postId = normalizePostId(req.postId());
+PostEntity existing = posts.findById(postId).orElse(null);
+if (existing != null) {
+  return ResponseEntity.ok(Envelope.ok(...existing...));
+}
+...
+posts.save(p);
+```
+
+### 论文文章接口说明
+
+- 路径：`POST /api/v1/internal/agent/papers`
+- DTO 字段：
+  - `postId`
+  - `userId`
+  - `title`
+  - `source`
+  - `content`
+  - `paperId`
+  - `formats`
+  - `highlights`
+  - `tags`
+  - `publishedAt`
+
+请求示例：
+
+```json
+{
+  "postId": "post_paper_001",
+  "userId": "u_agent",
+  "title": "Paper 标题",
+  "source": "agent",
+  "content": "论文摘要或整理后的正文",
+  "paperId": "arxiv:2501.00001",
+  "formats": [
+    { "type": "PDF", "url": "https://example.com/a.pdf" }
+  ],
+  "highlights": [
+    {
+      "highlightId": "h1",
+      "page": 3,
+      "level": "high",
+      "title": "核心结论",
+      "snippet": "这里是一段高亮内容"
+    }
+  ],
+  "tags": ["rag", "llm"],
+  "publishedAt": "2026-04-08T12:00:00Z"
+}
+```
+
+论文文章的处理特点：
+
+- 若 `postId` 已存在：更新标题、来源、作者、发布时间、正文内容
+- 若不存在：创建新文章
+- `content` 会和 `paperId / formats / highlights / tags` 一起被重新拼成结构化正文
+
+核心逻辑：
+
+```java
+PostEntity existing = posts.findById(postId).orElse(null);
+if (existing != null) {
+  existing.setTitle(req.title());
+  existing.setSource(req.source());
+  existing.setAuthorUserId(authorUserId);
+  existing.setPublishedAt(req.publishedAt() == null ? existing.getPublishedAt() : req.publishedAt());
+  existing.setContent(buildPostContent(req));
+  return posts.save(existing);
+}
+```
+
+---
+
+## 4.6 Agent 入库调用示例
+
+### curl：普通文章入库
+
+```bash
+curl -X POST "http://47.109.193.180:9628/api/v1/internal/agent/posts" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Id: req-agent-post-001" \
+  -H "X-Demo-Ingest-Token: <DEMO_INGEST_TOKEN>" \
+  -d '{
+    "postId":"post_agent_001",
+    "userId":"u_agent",
+    "title":"一篇更新后的文章标题",
+    "content":"文章正文内容",
+    "source":"agent",
+    "publishedAt":"2026-04-08T12:00:00Z"
+  }'
+```
+
+### curl：论文文章入库
+
+```bash
+curl -X POST "http://47.109.193.180:9628/api/v1/internal/agent/papers" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Id: req-agent-paper-001" \
+  -H "X-Demo-Ingest-Token: <DEMO_INGEST_TOKEN>" \
+  -d '{
+    "postId":"post_paper_001",
+    "userId":"u_agent",
+    "title":"Paper 标题",
+    "source":"agent",
+    "content":"论文摘要或整理后的正文",
+    "paperId":"arxiv:2501.00001",
+    "formats":[{"type":"PDF","url":"https://example.com/a.pdf"}],
+    "highlights":[{"highlightId":"h1","page":3,"level":"high","title":"核心结论","snippet":"这里是一段高亮内容"}],
+    "tags":["rag","llm"],
+    "publishedAt":"2026-04-08T12:00:00Z"
+  }'
+```
+
+### Python requests：普通文章入库
+
+```python
+import requests
+
+url = "http://47.109.193.180:9628/api/v1/internal/agent/posts"
+headers = {
+    "Content-Type": "application/json",
+    "X-Request-Id": "req-agent-post-001",
+    "X-Demo-Ingest-Token": "<DEMO_INGEST_TOKEN>",
+}
+payload = {
+    "postId": "post_agent_001",
+    "userId": "u_agent",
+    "title": "一篇更新后的文章标题",
+    "content": "文章正文内容",
+    "source": "agent",
+    "publishedAt": "2026-04-08T12:00:00Z",
+}
+
+resp = requests.post(url, json=payload, headers=headers, timeout=20)
+print(resp.status_code)
+print(resp.json())
+```
+
+### Python requests：论文文章入库
+
+```python
+import requests
+
+url = "http://47.109.193.180:9628/api/v1/internal/agent/papers"
+headers = {
+    "Content-Type": "application/json",
+    "X-Request-Id": "req-agent-paper-001",
+    "X-Demo-Ingest-Token": "<DEMO_INGEST_TOKEN>",
+}
+payload = {
+    "postId": "post_paper_001",
+    "userId": "u_agent",
+    "title": "Paper 标题",
+    "source": "agent",
+    "content": "论文摘要或整理后的正文",
+    "paperId": "arxiv:2501.00001",
+    "formats": [{"type": "PDF", "url": "https://example.com/a.pdf"}],
+    "highlights": [
+        {
+            "highlightId": "h1",
+            "page": 3,
+            "level": "high",
+            "title": "核心结论",
+            "snippet": "这里是一段高亮内容",
+        }
+    ],
+    "tags": ["rag", "llm"],
+    "publishedAt": "2026-04-08T12:00:00Z",
+}
+
+resp = requests.post(url, json=payload, headers=headers, timeout=20)
+print(resp.status_code)
+print(resp.json())
+```
+
+---
+
 ## 5. 自研 Agent 替换 GLM：必须实现的兼容协议
 
 当前 content-service 通过 `PF_PATHFINDER_AI_ENDPOINT` 调模型端。  

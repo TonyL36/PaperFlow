@@ -33,7 +33,12 @@ function GetTopicStats([string]$baseUrl, [string]$sourceName) {
     $all += $items
     if ($items.Count -lt 200) { break }
   }
-  $rows = @($all | Where-Object { $_.source -eq $sourceName })
+  $rows = @(
+    $all |
+      Where-Object { $_.source -eq $sourceName } |
+      Group-Object postId |
+      ForEach-Object { $_.Group | Select-Object -First 1 }
+  )
   $dup = @($rows | Group-Object title | Where-Object { $_.Count -gt 1 })
   return [pscustomobject]@{ count = $rows.Count; dup = $dup.Count }
 }

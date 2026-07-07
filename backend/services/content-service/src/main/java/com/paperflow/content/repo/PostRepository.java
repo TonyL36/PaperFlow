@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PostRepository extends JpaRepository<PostEntity, String> {
-  @Query("select p from PostEntity p order by p.publishedAt desc")
+  @Query("select p from PostEntity p order by p.publishedAt desc, p.id desc")
   List<PostEntity> listRecent(Pageable pageable);
 
   boolean existsByPublishedAtBetween(OffsetDateTime start, OffsetDateTime end);

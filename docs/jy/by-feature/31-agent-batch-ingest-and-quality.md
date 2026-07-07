@@ -112,3 +112,4 @@ powershell -ExecutionPolicy Bypass -File .\PaperFlow\scripts\rewrite-and-reuploa
 - 接口验收：`/api/v1/posts/{postId}` 返回 200 且内容无 `???`
 - 页面验收：详情页标题、列表、粗体、代码片段均正常渲染
 - 资源验收：PDF 代理可访问且命中持久缓存
+
