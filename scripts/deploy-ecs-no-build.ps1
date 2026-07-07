@@ -33,6 +33,31 @@ function Test-FrontendArtifacts([string]$root) {
   return (Test-Path (Join-Path $root "apps/paperflow-web/dist/index.html"))
 }
 
+function Test-ComposeProdDockerfileMap([string]$root) {
+  $composePath = Join-Path $root "docker/compose.prod.yml"
+  if (!(Test-Path $composePath)) {
+    Write-Warning "compose not found: $composePath"
+    return $false
+  }
+  $text = Get-Content $composePath -Raw -Encoding UTF8
+  $expectedMappings = @(
+    @{ Service = "user-service"; Dockerfile = "docker/Dockerfile.user-service" },
+    @{ Service = "content-service"; Dockerfile = "docker/Dockerfile.content-service" },
+    @{ Service = "api-gateway"; Dockerfile = "docker/Dockerfile.api-gateway" },
+    @{ Service = "frontend"; Dockerfile = "docker/Dockerfile.frontend" }
+  )
+  foreach ($mapping in $expectedMappings) {
+    $servicePattern = "(?ms)^\s{2}$([regex]::Escape($mapping.Service)):\s.*?^\s{4}dockerfile:\s$([regex]::Escape($mapping.Dockerfile))\s*$"
+    if ($text -notmatch $servicePattern) {
+      Write-Warning "compose.prod.yml dockerfile mismatch for $($mapping.Service), expected $($mapping.Dockerfile)"
+      return $false
+    }
+  }
+  return $true
+}
+
+if (-not (Test-ComposeProdDockerfileMap $repoRoot)) { throw "compose.prod.yml dockerfile mapping check failed" }
+
 Push-Location $repoRoot
 try {
   if (-not $SkipLocalBuild) {

@@ -54,11 +54,13 @@
 - 39 网络安全/大数据每日更新技术文档： [39-topic-daily-cyber-bigdata-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/39-topic-daily-cyber-bigdata-technical-design.md)
 - 40 scheduler 模板帖治理技术文档： [40-daily-post-governance-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/40-daily-post-governance-technical-design.md)
 - 41 论坛点赞与子评论技术文档： [41-forum-likes-threaded-comments-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/41-forum-likes-threaded-comments-technical-design.md)
+- 45 云端 compose 漂移收口与发布防护： [45-cloud-compose-drift-remediation.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/45-cloud-compose-drift-remediation.md)
 - 番外：阿里云 ECS 无构建部署手册： [2026-03-27-ecs-deploy-no-build-runbook.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/%E7%95%AA%E5%A4%96/2026-03-27-ecs-deploy-no-build-runbook.md)
 
 ## 7. 最新日报
 
 - 周报索引（近三周）： [weekly/00-index.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/weekly/00-index.md)
+- 2026-07-07：网关访问策略收口与云端 compose 漂移治理： [2026-07-07.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-07-07.md)
 - 2026-04-01：Markdown 渲染修复、中文编码修复、重写回灌与 502 排障： [2026-04-01.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-01.md)
 - 2026-04-04：scheduler 模板帖治理、topic 板块扩展与云端定时配置： [2026-04-04.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-04-04.md)
 - 2026-06-20：PDF 选区技术文档收口与阅读体验问题复盘： [2026-06-20.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/daily/2026-06-20.md)
