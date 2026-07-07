@@ -72,6 +72,7 @@
 - 28 论文 Agent 传输与高亮协议： [28-paper-agent-protocol-and-highlights.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/28-paper-agent-protocol-and-highlights.md)
 - 42 PDF 文字选区对齐与边缘水印过滤技术文档： [42-frontend-pdf-selection-technical-design.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/42-frontend-pdf-selection-technical-design.md)
 - 43 评论展示最新资料联动与云端热修复技术文档： [43-comment-latest-profile-sync-and-cloud-hotfix.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/43-comment-latest-profile-sync-and-cloud-hotfix.md)
+- 44 PDF 阅读页重构、响应式收口与导航修复开发总结： [44-frontend-pdf-reader-refactor-and-responsive-nav.md](file:///f:/Gitee/PaperFlow/PaperFlow/docs/jy/by-feature/44-frontend-pdf-reader-refactor-and-responsive-nav.md)
 
 ## 6. 项目定义与需求
 
