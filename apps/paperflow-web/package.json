@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:cloud": "cross-env VITE_API_BASE=http://47.109.193.180:9628 vite --host 127.0.0.1 --port 9630",
     "dev:mock": "concurrently -n mock,vite -c \"cyan,magenta\" \"npm run mock:api\" \"cross-env VITE_API_BASE=http://localhost:3151 vite\"",
     "build": "vite build",
     "preview": "vite preview",

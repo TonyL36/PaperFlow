@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPdfTextSpanStyle, shouldSkipPdfWatermarkItem } from "./paperPdfTextLayer";
+import { buildPdfTextSpanStyle, resolvePdfTextScaleX, shouldSkipPdfWatermarkItem } from "./paperPdfTextLayer";
 
 describe("paperPdfTextLayer", () => {
   it("为水平文本输出稳定的定位、字号和宽度裁剪样式", () => {
@@ -71,5 +71,25 @@ describe("paperPdfTextLayer", () => {
         pageWidth: 920
       })
     ).toBe(false);
+  });
+
+  it("在文本靠近右边缘时收紧 scaleX，避免划词区域继续向右溢出", () => {
+    expect(
+      resolvePdfTextScaleX({
+        measuredWidth: 100,
+        expectedWidth: 120,
+        left: 880,
+        pageWidth: 920
+      })
+    ).toBe(0.4);
+
+    expect(
+      resolvePdfTextScaleX({
+        measuredWidth: 100,
+        expectedWidth: 120,
+        left: 640,
+        pageWidth: 920
+      })
+    ).toBe(1.2);
   });
 });

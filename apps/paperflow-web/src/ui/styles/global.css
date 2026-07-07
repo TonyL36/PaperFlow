@@ -77,13 +77,74 @@ button:disabled{
   max-width: var(--pf-page-max);
   margin: 0 auto;
   padding: 10px 16px;
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
   align-items: center;
 }
 .pf-brand{
   font-weight: 800;
   letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.pf-topnav__primary{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.pf-topnav__secondary{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.pf-topnav__secondary{
+  justify-content: flex-end;
+}
+.pf-topnav__more{
+  position: relative;
+}
+.pf-topnav__more-trigger{
+  border: 0;
+  background: transparent;
+  color: var(--pf-text-2);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.pf-topnav__more-trigger:hover{
+  background: rgba(55, 53, 47, 0.06);
+}
+.pf-topnav__more-trigger[aria-expanded="true"]{
+  color: var(--pf-text);
+  background: rgba(55, 53, 47, 0.07);
+}
+.pf-topnav__more-menu{
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  background: var(--pf-surface);
+  box-shadow: var(--pf-shadow);
+  display: grid;
+  gap: 8px;
+}
+.pf-topnav__more-group{
+  display: grid;
+  gap: 4px;
+}
+.pf-topnav__more-title{
+  padding: 2px 8px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pf-text-3);
 }
 .pf-navlink{
   color: var(--pf-text-2);
@@ -123,7 +184,55 @@ button:disabled{
 .pf-nav-profile:hover{
   text-decoration: none;
 }
+.pf-topnav .pf-nav-profile{
+  min-width: 0;
+}
+.pf-topnav .pf-nav-profile .pf-muted{
+  white-space: nowrap;
+}
+.pf-topnav .pf-navspacer{
+  display: none;
+}
+.pf-topnav__inner > .pf-row,
+.pf-topnav__inner > .pf-navlink{
+  justify-self: end;
+}
+.pf-topnav--compact .pf-navtile__label{
+  display: none;
+}
+.pf-topnav--compact .pf-navtile{
+  min-width: auto;
+}
+.pf-topnav--compact .pf-navlink,
+.pf-topnav--compact .pf-topnav__more-trigger{
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.pf-topnav--collapsed .pf-navtile__label{
+  display: none;
+}
+.pf-topnav--collapsed .pf-navtile{
+  min-width: auto;
+}
+.pf-topnav--collapsed .pf-nav-profile .pf-muted{
+  display: none;
+}
 .pf-navspacer{ flex: 1; }
+@media (max-width: 1440px){
+  .pf-topnav__inner{
+    gap: 10px;
+  }
+}
+@media (max-width: 1240px){
+  .pf-topnav__inner{
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .pf-topnav .pf-nav-profile .pf-muted{
+    display: none;
+  }
+}
 .pf-container{
   width: 100%;
   max-width: var(--pf-page-max);
@@ -146,6 +255,33 @@ button:disabled{
 .pf-page__header{
   display: grid;
   gap: 6px;
+}
+.pf-pdf-page-header{
+  gap: 8px;
+}
+.pf-pdf-page-header__title-row{
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pf-pdf-page-header__actions{
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.pf-pdf-page-header__actions .pf-button{
+  max-width: 100%;
+}
+.pf-pdf-page-header--stacked .pf-pdf-page-header__title-row{
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.pf-pdf-page-header--stacked .pf-pdf-page-header__actions{
+  width: 100%;
+  justify-content: flex-start;
+}
+.pf-pdf-page-header--stacked .pf-pdf-page-header__actions .pf-button{
+  width: 100%;
 }
 .pf-subtitle{
   color: var(--pf-text-2);
@@ -649,12 +785,12 @@ button:disabled{
 }
 .pf-pdf-main-page-shell{
   position: relative;
-  width: 100%;
-  display: flex;
-  justify-content: center;
+  width: fit-content;
+  overflow: hidden;
 }
 .pf-pdf-main-page-zoom{
-  transform-origin: top center;
+  transform-origin: top left;
+  display: block;
 }
 .pf-pdf-main-page-content{
   position: relative;
@@ -729,7 +865,16 @@ button:disabled{
   grid-template-columns: minmax(146px, 0.56fr) minmax(0, 4.3fr) minmax(272px, 1.24fr);
 }
 .pf-pdf-layout--agent-no-rail{
-  grid-template-columns: minmax(0, 4.86fr) minmax(272px, 1.24fr);
+  grid-template-columns: minmax(0, 980px) minmax(280px, 360px);
+  justify-content: center;
+}
+.pf-pdf-layout--agent-focus{
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: center;
+}
+.pf-pdf-layout--agent-focus .pf-pdf-main{
+  width: min(100%, 1040px);
+  justify-self: center;
 }
 .pf-paper-page-title-offset{
   display: block;
@@ -932,6 +1077,7 @@ button:disabled{
   }
   .pf-pdf-layout--agent-no-rail{
     grid-template-columns: 1fr;
+    justify-content: stretch;
   }
   .pf-pdf-main{
     min-height: auto;

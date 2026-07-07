@@ -5,6 +5,7 @@ export default defineConfig({
   base: "/paperflow/",
   plugins: [react()],
   server: {
+    host: "127.0.0.1",
     port: 9628,
     strictPort: true,
     open: "/paperflow/",

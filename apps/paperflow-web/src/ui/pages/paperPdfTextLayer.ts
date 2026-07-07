@@ -23,6 +23,13 @@ type ShouldSkipPdfWatermarkItemInput = {
   pageWidth: number;
 };
 
+type ResolvePdfTextScaleXInput = {
+  measuredWidth: number;
+  expectedWidth: number;
+  left: number;
+  pageWidth: number;
+};
+
 function toPx(value: number): string {
   return `${Number(value.toFixed(3))}px`;
 }
@@ -32,12 +39,33 @@ export function shouldSkipPdfWatermarkItem(input: ShouldSkipPdfWatermarkItemInpu
   if (text.length < 4) return false;
   const [a, b, , , x] = input.transform;
   const rotation = Math.atan2(b, a);
+  // Only drop likely vertical edge watermarks so正文和页码仍可进入文字层。
   const isVertical = Math.abs(Math.cos(rotation)) < 0.35;
   if (!isVertical) return false;
   const edgeThreshold = Math.max(36, input.pageWidth * 0.08);
   const isOnLeftEdge = x <= edgeThreshold;
   const isOnRightEdge = x >= input.pageWidth - edgeThreshold;
   return isOnLeftEdge || isOnRightEdge;
+}
+
+export function resolvePdfTextScaleX(input: ResolvePdfTextScaleXInput): number | null {
+  const { measuredWidth, expectedWidth, left, pageWidth } = input;
+  if (!(measuredWidth > 0) || !(expectedWidth > 0) || !(pageWidth > 0)) {
+    return null;
+  }
+  const safeLeft = Math.max(0, left);
+  const remainingWidth = Math.max(0, pageWidth - safeLeft);
+  if (remainingWidth <= 0) {
+    return null;
+  }
+  // Near the right edge we cap text width by remaining space to avoid selection
+  // spans continuing past the page boundary at high zoom levels.
+  const targetWidth = Math.min(expectedWidth, remainingWidth);
+  const scaleX = targetWidth / measuredWidth;
+  if (!Number.isFinite(scaleX) || scaleX <= 0) {
+    return null;
+  }
+  return Number(scaleX.toFixed(4));
 }
 
 export function buildPdfTextSpanStyle(input: BuildPdfTextSpanStyleInput): PdfTextSpanStyle {
