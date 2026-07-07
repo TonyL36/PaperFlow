@@ -307,6 +307,48 @@ mvn -pl backend/services/api-gateway spring-boot:run
 - 统一访问策略不只是在单元测试里成立
 - 它在真实网关转发链路里也能先完成正确分类，再把请求交给下游服务处理
 
+### 7.7 GitHub 提交与线上最小热更新验证
+
+本次改动最终以一次精确提交进入远端仓库：
+
+- Git 提交：`c34c3f7`
+- 提交信息：`refactor(api-gateway): unify access policy routing`
+- 推送目标：`github/master`
+
+服务器发布时没有走整仓全量替换，而是采用最小热更新方式：
+
+1. 本地只构建 `api-gateway` 的新 jar
+2. 仅上传 `api-gateway-0.1.0-SNAPSHOT.jar` 到服务器临时目录
+3. 只替换 `api-gateway` 容器内的 `/app/app.jar`
+4. 只重启 `api-gateway` 容器
+
+这次发布明确没有动到：
+- `user-service`
+- `content-service`
+- `frontend`
+
+热更新完成后的线上抽样结果如下：
+
+- `GET /actuator/health`
+  - 返回 `200 {"status":"UP"}`
+  - 说明网关容器替换 jar 后恢复正常
+
+- `GET /api/v1/notifications`
+  - 在无 Bearer Token 时返回 `401 AUTH_MISSING_TOKEN`
+  - 说明受保护接口在线上仍由网关本身正确拦截
+
+- `GET /api/v1/public/users/u_demo`
+  - 返回 `404 RES_NOT_FOUND`
+  - 同时带有 `X-RateLimit-Limit: 180`
+  - 说明公开用户资料在线上依旧命中 `PUBLIC_GET` 桶
+
+- `GET /api/v1/oauth/qq/callback`
+  - 返回 `400 Bad Request`
+  - 同时带有 `X-RateLimit-Limit: 120`
+  - 说明 OAuth 回调在线上依旧命中 `AUTH` 桶
+
+这说明本次重构不仅本地测试通过，而且已经通过最小影响面的方式进入线上网关实例，并保持了与本地一致的行为。
+
 ---
 
 ## 8. 收益与后续建议
