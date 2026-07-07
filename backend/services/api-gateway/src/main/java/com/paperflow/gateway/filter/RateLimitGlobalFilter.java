@@ -21,30 +21,31 @@ public final class RateLimitGlobalFilter implements GlobalFilter, Ordered {
   private final RateLimitProperties props;
   private final InMemoryFixedWindowRateLimiter limiter;
   private final JsonResponseWriter writer;
+  private final EndpointAccessPolicy accessPolicy;
 
-  public RateLimitGlobalFilter(RateLimitProperties props, InMemoryFixedWindowRateLimiter limiter, JsonResponseWriter writer) {
+  public RateLimitGlobalFilter(
+      RateLimitProperties props,
+      InMemoryFixedWindowRateLimiter limiter,
+      JsonResponseWriter writer,
+      EndpointAccessPolicy accessPolicy
+  ) {
     this.props = props;
     this.limiter = limiter;
     this.writer = writer;
+    this.accessPolicy = accessPolicy;
   }
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
     String path = exchange.getRequest().getURI().getPath();
     HttpMethod method = exchange.getRequest().getMethod();
-
-    boolean isAuth = path.startsWith("/api/v1/auth/");
-    boolean isPublic = method == HttpMethod.GET && (
-        path.equals("/api/v1/posts") || path.startsWith("/api/v1/posts/") ||
-        path.equals("/api/v1/comments") || path.startsWith("/api/v1/comments/") ||
-        path.startsWith("/api/v1/public/papers/")
-    );
+    EndpointAccessDecision decision = accessPolicy.decide(path, method);
 
     String userId = (String) exchange.getAttributes().get(ATTR_USER_ID);
     int limit;
-    if (isAuth) {
+    if (decision.bucket() == EndpointAccessBucket.AUTH) {
       limit = props.getAuthPerMinute();
-    } else if (isPublic) {
+    } else if (decision.bucket() == EndpointAccessBucket.PUBLIC_GET) {
       limit = props.getPublicGetPerMinute();
     } else if (userId == null) {
       limit = props.getAnonymousPerMinute();

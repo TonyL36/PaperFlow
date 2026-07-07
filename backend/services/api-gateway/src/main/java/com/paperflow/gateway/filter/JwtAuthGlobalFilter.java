@@ -24,41 +24,23 @@ import reactor.core.publisher.Mono;
 public final class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
   private final AuthProperties props;
   private final JsonResponseWriter writer;
+  private final EndpointAccessPolicy accessPolicy;
 
-  public JwtAuthGlobalFilter(AuthProperties props, JsonResponseWriter writer) {
+  public JwtAuthGlobalFilter(AuthProperties props, JsonResponseWriter writer, EndpointAccessPolicy accessPolicy) {
     this.props = props;
     this.writer = writer;
+    this.accessPolicy = accessPolicy;
   }
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
     String path = exchange.getRequest().getURI().getPath();
     HttpMethod method = exchange.getRequest().getMethod();
-
-    boolean isAuthPublic =
-        path.equals("/api/v1/auth/register") ||
-        path.equals("/api/v1/auth/register/email-code/request") ||
-        path.equals("/api/v1/auth/login") ||
-        path.equals("/api/v1/auth/refresh") ||
-        path.equals("/api/v1/auth/password/request") ||
-        path.equals("/api/v1/auth/password/confirm");
-    boolean isOauthCallback =
-        path.equals("/api/v1/oauth/qq/callback") ||
-        path.equals("/api/v1/oauth/wechat/callback");
-    boolean isPublic = method == HttpMethod.GET && (
-        path.equals("/api/v1/posts") || path.startsWith("/api/v1/posts/") ||
-        path.equals("/api/v1/comments") || path.startsWith("/api/v1/comments/") ||
-        path.startsWith("/api/v1/public/users/") ||
-        path.startsWith("/api/v1/public/users/avatars/") ||
-        path.startsWith("/api/v1/public/papers/")
-    );
+    EndpointAccessDecision decision = accessPolicy.decide(path, method);
     String auth = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
     boolean hasBearer = auth != null && !auth.isBlank() && auth.startsWith("Bearer ");
 
-    if (isAuthPublic || isOauthCallback) {
-      return chain.filter(exchange);
-    }
-    if (isPublic && !hasBearer) {
+    if (!decision.authRequired() && !hasBearer) {
       return chain.filter(exchange);
     }
 
